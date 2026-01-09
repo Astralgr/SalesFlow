@@ -4886,10 +4886,19 @@ auth.onAuthStateChanged(async (user) => {
         state.sharedMeetings = [];
         state.myShares = [];
     }
+    
+    // Reset state to dashboard view
+    state.currentCustomer = 'all';
+    state.currentMeetingTab = 'all';
+    
+    // Render all components
     render();
     renderCustomerFilters();
     updateStats();
     updateShareNotificationBadge();
+    
+    // Always show dashboard on initial load/refresh
+    showDashboard();
 });
 
 async function loadUserDataFromFirestore(uid) {
@@ -5099,19 +5108,32 @@ function deleteCustomerFromSidebar(customerId) {
     const customer = state.customers.find(c => c.id === customerId);
     if (!customer) return;
     
-    const hasData = state.tasks.some(t => t.customerId === customerId) ||
-                    state.meetings.some(m => m.customerId === customerId) ||
-                    state.CustomerInfos.some(p => p.customerId === customerId);
+    // Count associated data
+    const taskCount = state.tasks.filter(t => t.customerId === customerId).length;
+    const meetingCount = state.meetings.filter(m => m.customerId === customerId).length;
+    const prepCount = state.CustomerInfos.filter(p => p.customerId === customerId).length;
     
-    const message = hasData 
-        ? `Delete "${customer.name}"? This will remove all associated tasks, meetings, and CustomerInfos.`
-        : `Delete "${customer.name}"?`;
+    let message = `Delete "${customer.name}"?`;
+    
+    if (taskCount > 0 || meetingCount > 0 || prepCount > 0) {
+        const parts = [];
+        if (meetingCount > 0) parts.push(`${meetingCount} meeting${meetingCount !== 1 ? 's' : ''}`);
+        if (taskCount > 0) parts.push(`${taskCount} task${taskCount !== 1 ? 's' : ''}`);
+        if (prepCount > 0) parts.push(`${prepCount} customer info${prepCount !== 1 ? 's' : ''}`);
+        message = `Delete "${customer.name}"?\n\nThis will also remove:\n• ${parts.join('\n• ')}`;
+    }
     
     showConfirm('🗑️', 'Delete Customer?', message, () => {
         // Remove customer
         state.customers = state.customers.filter(c => c.id !== customerId);
         
-        // Remove customer reference from tasks
+        // Remove all meetings associated with this customer
+        state.meetings = state.meetings.filter(m => m.customerId !== customerId);
+        
+        // Remove all CustomerInfos associated with this customer
+        state.CustomerInfos = state.CustomerInfos.filter(p => p.customerId !== customerId);
+        
+        // Remove customer reference from tasks (or optionally delete tasks entirely)
         state.tasks.forEach(task => {
             if (task.customerId === customerId) {
                 task.customerId = null;
@@ -5119,26 +5141,42 @@ function deleteCustomerFromSidebar(customerId) {
             }
         });
         
-        // Remove meetings
-        state.meetings = state.meetings.filter(m => m.customerId !== customerId);
-        
-        // Remove CustomerInfos
-        state.CustomerInfos = state.CustomerInfos.filter(p => p.customerId !== customerId);
-        
+        // Save data
         saveData();
+        
+        // Refresh customer filters in sidebar
         renderCustomerFilters();
-        renderCustomerList();
+        
+        // Refresh All Customers section if visible
+        if (document.getElementById('allCustomersSection').classList.contains('active')) {
+            renderAllCustomersList();
+        }
+        
+        // Refresh Customer Activity section if visible
+        if (document.getElementById('customerActivitySection').classList.contains('active')) {
+            renderCustomerActivity();
+        }
+        
+        // Refresh Upcoming Meetings section if visible
+        if (document.getElementById('upcomingMeetingsSection').classList.contains('active')) {
+            renderUpcomingMeetings();
+        }
+        
+        // Refresh tasks list
+        renderTasks();
+        
+        // Update stats
+        updateStats();
         
         // If currently viewing this customer, go back to dashboard
         if (state.currentCustomer === customerId) {
             showDashboard();
         }
         
-
-        
-        showToast('Deleted', 'success');
+        showToast(`✅ "${customer.name}" and all associated data deleted`, 'success');
     });
 }
+
 
 function renameCustomerFromHeader() {
     if (state.currentCustomer === 'all') return;
@@ -6056,6 +6094,13 @@ function init() {
     renderCustomerFilters();
     renderNotes();
     showHome();
+
+     // Reset state to ensure clean start
+    state.currentCustomer = 'all';
+    state.currentMeetingTab = 'all';
+    
+    // Show dashboard (will be called again by auth callback, but ensures immediate display)
+    showDashboard();
 
     // Auto-refresh upcoming meetings every 30 seconds to update statuses
     setInterval(() => {
@@ -10910,7 +10955,8 @@ document.addEventListener('click', (e) => {
     }
 });
 
-              function confirmClearAll() {
+             async function confirmClearAll() {
+    // Clear local state
     state.tasks = [];
     state.notes = [];
     state.customers = [];
@@ -10922,10 +10968,53 @@ document.addEventListener('click', (e) => {
         { id: 'all', name: 'All Meetings', icon: '', isDefault: true },
         { id: 'individual', name: 'Individual', icon: '', isDefault: true }
     ];
+    
+    // Clear localStorage
     localStorage.clear();
+    
+    // If user is signed in, also clear from Firestore
+    if (auth.currentUser) {
+        try {
+            const deletePromises = [];
+            
+            // Delete shared meetings where user is the sharer (shared BY me)
+            const sharedByMe = await db.collection('sharedMeetings')
+                .where('sharedBy', '==', auth.currentUser.uid)
+                .get();
+            
+            sharedByMe.docs.forEach(doc => {
+                deletePromises.push(doc.ref.delete());
+            });
+            
+            // Delete shared meetings where user is the recipient (shared WITH me)
+            const sharedWithMe = await db.collection('sharedMeetings')
+                .where('sharedWithEmail', '==', auth.currentUser.email.toLowerCase())
+                .get();
+            
+            sharedWithMe.docs.forEach(doc => {
+                deletePromises.push(doc.ref.delete());
+            });
+            
+            // Wait for all deletes to complete
+            if (deletePromises.length > 0) {
+                await Promise.all(deletePromises);
+                console.log(`✅ Deleted ${deletePromises.length} shared meeting(s) from Firestore`);
+            }
+            
+            // Save cleared state to Firestore (clears user's main data document)
+            await saveUserDataToFirestore();
+            
+        } catch (error) {
+            console.error('Error clearing Firestore data:', error);
+            showToast('⚠️ Some cloud data may not have been cleared', 'error');
+        }
+    }
+    
+    // Update UI
     render();
     updateStats();
     renderCustomerFilters();
+    updateShareNotificationBadge();
     showDashboard();
     showToast('✅ All data cleared!', 'success');
 }
