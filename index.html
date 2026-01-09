@@ -13594,46 +13594,28 @@ function renderSharedWithList(meetingId) {
     const container = document.getElementById('sharedWithList');
     const shares = state.myShares.filter(s => s.meetingId === meetingId);
     
-    document.getElementById('sharedWithCount').textContent = shares.length;
-    
     if (shares.length === 0) {
-        container.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Not shared with anyone yet</div>';
+        container.innerHTML = '<div style="color: var(--text-secondary); font-size: 0.85rem;">Not shared yet</div>';
         return;
     }
     
     container.innerHTML = shares.map(share => {
-        const initials = share.sharedWithName.split(' ').map(n => n[0]).join('').toUpperCase();
+        const email = share.sharedWithEmail || 'Unknown';
+        const initial = email[0].toUpperCase();
+        const statusColor = share.status === 'accepted' ? '#10b981' : share.status === 'declined' ? '#ef4444' : '#f59e0b';
+        const statusText = share.status === 'accepted' ? 'Accepted' : share.status === 'declined' ? 'Declined' : 'Pending';
         
         return `
-            <div class="shared-user-card">
-                <div class="shared-user-avatar">${initials}</div>
-                <div class="shared-user-info">
-                    <div class="shared-user-name">${escapeHtml(share.sharedWithName)}</div>
-                    <div class="shared-user-email">${escapeHtml(share.sharedWithEmail)}</div>
-                                        <div class="shared-user-meta">
-                        <span class="shared-permission-badge view">
-                            📋 ${share.sharedTabs ? share.sharedTabs.length : 0} tab${(share.sharedTabs?.length || 0) !== 1 ? 's' : ''} shared
-                        </span>
-                        <span class="shared-status-badge ${share.status}">
-                            ${share.status === 'pending' ? '⏳ Pending' : '✅ Accepted'}
-                        </span>
-                    </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem;">${initial}</div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${email}</div>
+                    <div style="font-size: 0.75rem; color: ${statusColor};">${statusText}</div>
                 </div>
-<div class="shared-user-actions">
-    ${share.status === 'pending' ? `
-        <button class="task-btn" onclick="remindShare('${share.id}')" title="Send Reminder">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-        </button>
-    ` : ''}
-</div>
             </div>
         `;
     }).join('');
 }
-
 
 
 // Remind share
