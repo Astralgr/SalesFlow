@@ -13609,8 +13609,8 @@ async function sendShareInvite() {
         document.getElementById('shareEmailInput').value = '';
         document.getElementById('shareMessageInput').value = '';
         
-        closeShareModal();
-        showToast(`✅ Shared with ${email}!`, 'success');
+        // Show success window (this also closes the share modal)
+        showShareSuccess(email);
         
     } catch (error) {
         console.error('Share error:', error);
@@ -13751,6 +13751,47 @@ function showSharedMeetings() {
 }
 
 let currentSharedStatusFilter = 'all';
+
+
+function showShareSuccess(email) {
+    // First close the share modal
+    const shareModal = document.getElementById('shareModal');
+    if (shareModal) {
+        shareModal.classList.remove('active');
+        shareModal.style.display = 'none';
+    }
+    currentSharingMeetingId = null;
+    
+    // Configure the confirm modal as a success message
+    document.getElementById('confirmIcon').textContent = '✅';
+    document.getElementById('confirmTitle').textContent = 'Meeting Shared!';
+    document.getElementById('confirmMessage').textContent = `Meeting has been shared with ${email}!`;
+    
+    // Hide cancel button for this use
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = 'none';
+    
+    // Configure OK button
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.textContent = 'OK';
+    newConfirmBtn.className = 'btn btn-primary';
+    
+    newConfirmBtn.addEventListener('click', () => {
+        document.getElementById('confirmModal').classList.remove('active');
+        // Restore cancel button for future confirms
+        document.getElementById('cancelConfirmBtn').style.display = '';
+        // Reset confirm button styling
+        const btn = document.getElementById('confirmBtn');
+        btn.textContent = 'Confirm';
+        btn.className = 'btn btn-danger';
+    });
+    
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
+}
 
 function filterSharedByStatus(status) {
     currentSharedStatusFilter = status;
