@@ -4549,12 +4549,18 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
                 </button>
             </div>
         </div>
-        <div id="authUserInfo" style="display: none; text-align: center;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">👤</div>
-            <div style="font-weight: 600; font-size: 1.1rem;" id="authUserName"></div>
-            <div style="color: var(--text-secondary); margin-bottom: 1.5rem;" id="authUserEmail"></div>
-            <button class="btn btn-danger" onclick="signOutUser()" style="width: 100%;">Sign Out</button>
-        </div>
+<div id="authUserInfo" style="display: none; text-align: center;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">👤</div>
+    <div style="font-weight: 600; font-size: 1.1rem;" id="authUserName"></div>
+    <div style="color: var(--text-secondary); margin-bottom: 1.5rem;" id="authUserEmail"></div>
+    <button class="btn btn-danger" onclick="signOutUser()" style="width: 100%; margin-bottom: 0.75rem;">Sign Out</button>
+    <button class="btn btn-secondary" onclick="confirmDeleteAccount()" style="width: 100%; border-color: var(--danger); color: var(--danger);">
+        🗑️ Delete Account
+    </button>
+    <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.75rem;">
+        Deleting your account will permanently remove all your data.
+    </div>
+</div>
     </div>
 </div>
 
@@ -4900,6 +4906,221 @@ auth.onAuthStateChanged(async (user) => {
     // Always show dashboard on initial load/refresh
     showDashboard();
 });
+
+
+function confirmDeleteAccount() {
+    if (!auth.currentUser) {
+        showToast('⚠️ Not signed in', 'error');
+        return;
+    }
+    
+    // Close auth modal first
+    closeAuthModal();
+    
+    // Show confirmation with extra warning
+    document.getElementById('confirmIcon').textContent = '⚠️';
+    document.getElementById('confirmTitle').textContent = 'Delete Account?';
+    document.getElementById('confirmMessage').innerHTML = `
+        <div style="text-align: left;">
+            <p style="margin-bottom: 0.75rem;"><strong>This action is permanent and cannot be undone!</strong></p>
+            <p style="margin-bottom: 0.75rem;">The following will be permanently deleted:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+                <li>${state.customers.length} customer(s)</li>
+                <li>${state.meetings.length} meeting(s)</li>
+                <li>${state.tasks.length} task(s)</li>
+                <li>${state.notes.length} note(s)</li>
+                <li>${state.CustomerInfos.length} customer info(s)</li>
+                <li>${state.myShares.length} shared meeting(s)</li>
+            </ul>
+            <p style="color: var(--danger); font-weight: 600;">Your account and all data will be permanently deleted.</p>
+        </div>
+    `;
+    
+    // Show cancel button
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = '';
+    
+    // Configure delete button
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.textContent = '🗑️ Delete Forever';
+    newConfirmBtn.className = 'btn btn-danger';
+    
+    newConfirmBtn.addEventListener('click', () => {
+        document.getElementById('confirmModal').classList.remove('active');
+        // Show second confirmation for extra safety
+        showFinalDeleteConfirmation();
+    });
+    
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+function showFinalDeleteConfirmation() {
+    // Second confirmation with email verification
+    const userEmail = auth.currentUser.email;
+    
+    document.getElementById('confirmIcon').textContent = '🚨';
+    document.getElementById('confirmTitle').textContent = 'Final Confirmation';
+    document.getElementById('confirmMessage').innerHTML = `
+        <div style="text-align: center;">
+            <p style="margin-bottom: 1rem;">Type your email to confirm deletion:</p>
+            <input type="email" id="deleteConfirmEmail" class="form-input" placeholder="${userEmail}" style="margin-bottom: 0.75rem;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">This will permanently delete your account.</p>
+        </div>
+    `;
+    
+    // Show cancel button
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = '';
+    
+    // Configure delete button
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.textContent = 'Delete My Account';
+    newConfirmBtn.className = 'btn btn-danger';
+    
+    newConfirmBtn.addEventListener('click', async () => {
+        const enteredEmail = document.getElementById('deleteConfirmEmail').value.trim().toLowerCase();
+        
+        if (enteredEmail !== userEmail.toLowerCase()) {
+            showToast('❌ Email does not match', 'error');
+            return;
+        }
+        
+        document.getElementById('confirmModal').classList.remove('active');
+        await deleteUserAccount();
+    });
+    
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
+    
+    // Focus the email input
+    setTimeout(() => {
+        document.getElementById('deleteConfirmEmail')?.focus();
+    }, 100);
+}
+
+async function deleteUserAccount() {
+    if (!auth.currentUser) {
+        showToast('⚠️ Not signed in', 'error');
+        return;
+    }
+    
+    const user = auth.currentUser;
+    const userId = user.uid;
+    const userEmail = user.email.toLowerCase();
+    
+    // Show loading toast
+    showToast('🔄 Deleting account...', 'success');
+    
+    try {
+        const deletePromises = [];
+        
+        // 1. Delete shared meetings where user is the sharer (shared BY me)
+        const sharedByMe = await db.collection('sharedMeetings')
+            .where('sharedBy', '==', userId)
+            .get();
+        
+        sharedByMe.docs.forEach(doc => {
+            deletePromises.push(doc.ref.delete());
+        });
+        
+        // 2. Delete shared meetings where user is the recipient (shared WITH me)
+        const sharedWithMe = await db.collection('sharedMeetings')
+            .where('sharedWithEmail', '==', userEmail)
+            .get();
+        
+        sharedWithMe.docs.forEach(doc => {
+            deletePromises.push(doc.ref.delete());
+        });
+        
+        // 3. Delete user's main data document
+        deletePromises.push(db.collection('users').doc(userId).delete());
+        
+        // Wait for all Firestore deletes to complete
+        if (deletePromises.length > 0) {
+            await Promise.all(deletePromises);
+            console.log(`✅ Deleted ${deletePromises.length} document(s) from Firestore`);
+        }
+        
+        // 4. Clear local state
+        state.tasks = [];
+        state.notes = [];
+        state.customers = [];
+        state.meetings = [];
+        state.CustomerInfos = [];
+        state.sharedMeetings = [];
+        state.myShares = [];
+        state.meetingTabs = [
+            { id: 'all', name: 'All Meetings', icon: '', isDefault: true },
+            { id: 'individual', name: 'Individual', icon: '', isDefault: true }
+        ];
+        state.currentUser = null;
+        
+        // 5. Clear localStorage
+        localStorage.clear();
+        
+        // 6. Delete the Firebase Auth account
+        await user.delete();
+        
+        // 7. Update UI
+        updateAuthUI(null);
+        render();
+        updateStats();
+        renderCustomerFilters();
+        updateShareNotificationBadge();
+        showDashboard();
+        
+        // Show success message
+        showAccountDeletedSuccess();
+        
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        
+        // Handle specific errors
+        if (error.code === 'auth/requires-recent-login') {
+            showToast('⚠️ Please sign out, sign back in, and try again', 'error');
+        } else {
+            showToast('❌ Failed to delete account: ' + error.message, 'error');
+        }
+    }
+}
+
+function showAccountDeletedSuccess() {
+    document.getElementById('confirmIcon').textContent = '✅';
+    document.getElementById('confirmTitle').textContent = 'Account Deleted';
+    document.getElementById('confirmMessage').textContent = 'Your account and all associated data have been permanently deleted.';
+    
+    // Hide cancel button
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = 'none';
+    
+    // Configure OK button
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.textContent = 'OK';
+    newConfirmBtn.className = 'btn btn-primary';
+    
+    newConfirmBtn.addEventListener('click', () => {
+        document.getElementById('confirmModal').classList.remove('active');
+        // Restore cancel button for future confirms
+        document.getElementById('cancelConfirmBtn').style.display = '';
+        // Reset confirm button styling
+        const btn = document.getElementById('confirmBtn');
+        btn.textContent = 'Confirm';
+        btn.className = 'btn btn-danger';
+    });
+    
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
+}
 
 async function loadUserDataFromFirestore(uid) {
     try {
