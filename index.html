@@ -4880,12 +4880,16 @@ auth.onAuthStateChanged(async (user) => {
     updateAuthUI(user);
     if (user) {
         await loadUserDataFromFirestore(user.uid);
+        await loadSharingData();
     } else {
-        loadData(); // Load from localStorage for non-authenticated users
+        loadData();
+        state.sharedMeetings = [];
+        state.myShares = [];
     }
     render();
     renderCustomerFilters();
     updateStats();
+    updateShareNotificationBadge();
 });
 
 async function loadUserDataFromFirestore(uid) {
@@ -13375,42 +13379,37 @@ meetings.forEach(meeting => {
 
 
 // Initialize sharing data
-function loadSharingData() {
-    const userId = state.currentUser.id;
-    
-    // Load shared meetings for this user
-    const sharedMeetings = localStorage.getItem(`taskflow_sharedMeetings_${userId}`);
-    if (sharedMeetings) {
-        state.sharedMeetings = JSON.parse(sharedMeetings);
-    } else {
+async function loadSharingData() {
+    if (!auth.currentUser) {
         state.sharedMeetings = [];
-    }
-    
-    // Load shares created by this user
-    const myShares = localStorage.getItem(`taskflow_myShares_${userId}`);
-    if (myShares) {
-        state.myShares = JSON.parse(myShares);
-    } else {
         state.myShares = [];
+        updateShareNotificationBadge();
+        return;
     }
     
-    // Load notifications for this user
-    const notifications = localStorage.getItem(`taskflow_shareNotifications_${userId}`);
-    if (notifications) {
-        state.shareNotifications = JSON.parse(notifications);
-    } else {
-        state.shareNotifications = [];
+    try {
+        // Load meetings shared WITH me
+        const sharedWithMe = await db.collection('sharedMeetings')
+            .where('sharedWithEmail', '==', auth.currentUser.email.toLowerCase())
+            .get();
+        
+        state.sharedMeetings = sharedWithMe.docs.map(doc => doc.data());
+        
+        // Load meetings shared BY me
+        const sharedByMe = await db.collection('sharedMeetings')
+            .where('sharedBy', '==', auth.currentUser.uid)
+            .get();
+        
+        state.myShares = sharedByMe.docs.map(doc => doc.data());
+        
+        updateShareNotificationBadge();
+    } catch (error) {
+        console.error('Error loading shares:', error);
     }
-    
-    updateShareNotificationBadge();
 }
 
+
 function saveSharingData() {
-    const userId = state.currentUser.id;
-    
-    localStorage.setItem(`taskflow_sharedMeetings_${userId}`, JSON.stringify(state.sharedMeetings));
-    localStorage.setItem(`taskflow_myShares_${userId}`, JSON.stringify(state.myShares));
-    localStorage.setItem(`taskflow_shareNotifications_${userId}`, JSON.stringify(state.shareNotifications));
     updateShareNotificationBadge();
 }
 
@@ -13487,171 +13486,108 @@ function setupShareModalTabs() {
 }
 
 // Send share invite
-function sendShareInvite() {
+async function sendShareInvite() {
     const meetingId = document.getElementById('shareModalMeetingId').value;
-    const email = document.getElementById('shareEmailInput').value.trim();
-    const selectedTabs = Array.from(document.querySelectorAll('input[name="shareTab"]:checked'))
-        .map(cb => cb.value);
+    const email = document.getElementById('shareEmailInput').value.trim().toLowerCase();
+    const selectedTabs = Array.from(document.querySelectorAll('input[name="shareTab"]:checked')).map(cb => cb.value);
     const message = document.getElementById('shareMessageInput').value.trim();
-    const notifyEmail = document.getElementById('shareNotifyEmail').checked;
+    
+    if (!auth.currentUser) {
+        showToast('⚠️ Sign in to share meetings', 'error');
+        return;
+    }
     
     if (selectedTabs.length === 0) {
         showToast('⚠️ Select at least one tab to share', 'error');
         return;
     }
     
-    if (!email) {
-        showToast('⚠️ Enter email address', 'error');
+    if (!email || !email.includes('@')) {
+        showToast('⚠️ Enter valid email', 'error');
         return;
     }
     
-    // Validate email format
-    if (!email.includes('@')) {
-        showToast('⚠️ Invalid email format', 'error');
+    if (email === auth.currentUser.email.toLowerCase()) {
+        showToast('⚠️ Cannot share with yourself', 'error');
         return;
     }
     
     const meeting = state.meetings.find(m => m.id === meetingId);
     if (!meeting) return;
     
-    // ========== OFFLINE TESTING - START ==========
-    // Simulate finding user by email
-    const recipient = getTestUserByEmail(email);
-    
-   if (!recipient) {
-    showToast('⚠️ User not found (try jane@example.com or mike@example.com)', 'error');
-    return;
-}
-    // ========== OFFLINE TESTING - END ==========
-    
-    // Check if already shared with this user
-    const existingShare = state.myShares.find(s => 
-        s.meetingId === meetingId && s.sharedWithEmail === email
-    );
-    
-    if (existingShare) {
+    // Check if already shared
+    if (state.myShares.some(s => s.meetingId === meetingId && s.sharedWithEmail === email)) {
         showToast('⚠️ Already shared with this user', 'error');
         return;
     }
     
-        // Create share record (for current user)
-    const share = {
-        id: `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        meetingId: meetingId,
-        meetingTitle: meeting.title,
-        sharedBy: state.currentUser.email,
-        sharedByName: state.currentUser.name,
-        sharedWith: recipient.id,
-        sharedWithEmail: recipient.email,
-        sharedWithName: recipient.name,
-        sharedTabs: selectedTabs,
-        message: message,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    };
-    
-        state.myShares.push(share);
-    
-       // Create shared meeting record (simulating recipient's view)
-    // Filter meeting data based on selected tabs
-    const filteredMeetingData = { ...meeting };
-    
-    // Always include basic info
-    const sharedData = {
-        id: meeting.id,
-        customerId: meeting.customerId,
-        customerName: meeting.customerName,
-        title: meeting.title,
-        date: meeting.date,
-        type: meeting.type,
-        customTypeIcon: meeting.customTypeIcon,
-        duration: meeting.duration,
-        createdAt: meeting.createdAt
-    };
-    
-    // Add data based on selected tabs
-if (selectedTabs.includes('info')) {
-    sharedData.participants = meeting.participants;
-    sharedData.tags = meeting.tags;
-    sharedData.outcome = meeting.outcome;
-    sharedData.followUpDate = meeting.followUpDate;
-    sharedData.isPastMeeting = meeting.isPastMeeting;
-    sharedData.tabId = meeting.tabId; 
-}
-    
-    if (selectedTabs.includes('notes')) {
-        sharedData.notes = meeting.notes;
-        sharedData.notesHTML = meeting.notesHTML;
-        sharedData.nextSteps = meeting.nextSteps;
-        sharedData.nextStepsHTML = meeting.nextStepsHTML;
-    }
-    
-    if (selectedTabs.includes('meddpicc')) {
-        sharedData.meddpicc = meeting.meddpicc;
-    }
-    
-if (selectedTabs.includes('actions')) {
-    // Include associated tasks with full data
-    sharedData.associatedTasks = state.tasks
-        .filter(t => t.meetingId === meetingId)
-        .map(t => ({
-            title: t.title,
-            description: t.description,
-            priority: t.priority,
-            status: t.status,
-            dueDate: t.dueDate,
-            tags: t.tags,
-            color: t.color,
-            subtasks: t.subtasks
-        }));
-}
-    
-    const sharedMeeting = {
-        id: share.id,
-        meetingId: meetingId,
-        meetingData: sharedData,
-        sharedBy: state.currentUser.id,
-        sharedByEmail: state.currentUser.email,
-        sharedByName: state.currentUser.name,
-        sharedTabs: selectedTabs,
-        message: message,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    };
-    
-    // Save to current user's myShares
-    saveSharingData();
-    
-    // ========== OFFLINE TESTING - START ==========
-    // Add to recipient's sharedMeetings (cross-account simulation)
-    const recipientSharedMeetings = JSON.parse(
-        localStorage.getItem(`taskflow_sharedMeetings_${recipient.id}`) || '[]'
-    );
-    recipientSharedMeetings.push(sharedMeeting);
-    localStorage.setItem(
-        `taskflow_sharedMeetings_${recipient.id}`, 
-        JSON.stringify(recipientSharedMeetings)
-    );
-    // ========== OFFLINE TESTING - END ==========
-
+    try {
+        // Build shared data based on selected tabs
+        const sharedData = {
+            id: meeting.id,
+            customerName: meeting.customerName,
+            title: meeting.title,
+            date: meeting.date,
+            type: meeting.type,
+            duration: meeting.duration
+        };
+        
+        if (selectedTabs.includes('info')) {
+            sharedData.participants = meeting.participants;
+            sharedData.tags = meeting.tags;
+        }
+        if (selectedTabs.includes('notes')) {
+            sharedData.notes = meeting.notes;
+            sharedData.notesHTML = meeting.notesHTML;
+            sharedData.nextSteps = meeting.nextSteps;
+            sharedData.nextStepsHTML = meeting.nextStepsHTML;
+        }
+        if (selectedTabs.includes('meddpicc')) {
+            sharedData.meddpicc = meeting.meddpicc;
+        }
+        if (selectedTabs.includes('actions')) {
+            sharedData.associatedTasks = state.tasks.filter(t => t.meetingId === meetingId).map(t => ({
+                title: t.title, description: t.description, priority: t.priority, status: t.status
+            }));
+        }
+        
+        const shareId = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const shareRecord = {
+            id: shareId,
+            meetingId: meetingId,
+            meetingTitle: meeting.title,
+            meetingData: sharedData,
+            sharedBy: auth.currentUser.uid,
+            sharedByEmail: auth.currentUser.email,
+            sharedByName: auth.currentUser.displayName || auth.currentUser.email,
+            sharedWithEmail: email,
+            sharedTabs: selectedTabs,
+            message: message,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        };
+        
+        // Save to Firestore shared collection
+        await db.collection('sharedMeetings').doc(shareId).set(shareRecord);
+        
+        // Update local state
+        state.myShares.push(shareRecord);
+        saveData();
+        
         renderSharedWithList(meetingId);
-    
-    // Clear form
-    document.getElementById('shareEmailInput').value = '';
-    document.getElementById('shareMessageInput').value = '';
-    
-   // Show success modal and close share modal
-closeShareModal();
-showConfirm('✅', 'Invitation Sent!', `Meeting successfully shared with ${recipient.name}`, () => {
-    closeConfirmModal();
-});
-
-// Hide cancel button and change confirm text to OK
-document.getElementById('cancelConfirmBtn').style.display = 'none';
-const confirmBtn = document.getElementById('confirmBtn');
-confirmBtn.textContent = 'OK';
-confirmBtn.className = 'btn btn-primary';
+        document.getElementById('shareEmailInput').value = '';
+        document.getElementById('shareMessageInput').value = '';
+        
+        closeShareModal();
+        showToast(`✅ Shared with ${email}!`, 'success');
+        
+    } catch (error) {
+        console.error('Share error:', error);
+        showToast('❌ Failed to share: ' + error.message, 'error');
+    }
 }
+
 
 // Render shared with list
 function renderSharedWithList(meetingId) {
@@ -14089,14 +14025,12 @@ function closeAcceptMeetingModal() {
     document.getElementById('acceptMeetingModal').classList.remove('active');
 }
 
-function acceptSharedMeeting() {
+async function acceptSharedMeeting() {
     const sharedMeetingId = document.getElementById('acceptMeetingId').value;
-    const acceptType = 'copy'; // Always create independent copy
     let customerId = document.getElementById('acceptMeetingCustomer').value;
     const customerInputValue = document.getElementById('acceptMeetingCustomerInput').value.trim();
     const tabId = document.getElementById('acceptMeetingTab').value;
     
-    // Validate customer input
     if (!customerId && !customerInputValue) {
         showToast('⚠️ Enter a customer name', 'error');
         return;
@@ -14107,163 +14041,65 @@ function acceptSharedMeeting() {
     
     let customer = state.customers.find(c => c.id === customerId);
     
-    // If customer doesn't exist, create new one
     if (!customer && customerInputValue) {
         customer = {
             id: Date.now().toString(),
             name: customerInputValue,
-            email: '',
-            phone: '',
-            website: '',
-            address: '',
-            city: '',
-            state: '',
-            zip: '',
-            country: '',
-            industry: '',
-            size: '',
-            linkedIn: '',
-            mapsLink: '',
             createdAt: new Date().toISOString()
         };
         state.customers.push(customer);
         customerId = customer.id;
-        showToast('✅ Customer created!', 'success');
     }
     
-    if (!customer) {
-        showToast('⚠️ Customer not found', 'error');
-        return;
-    }
-    
-    // **NEW: Get edited data from form if it was being edited**
-    let meetingDataToSave = { ...sharedMeeting.meetingData };
-    
-    if (editingSharedMeetingId === sharedMeetingId && document.getElementById('inlineMeetingForm').classList.contains('active')) {
-        // User made edits - capture the current form data
-        meetingDataToSave = {
-            ...meetingDataToSave,
-            title: document.getElementById('meetingTitle').value.trim(),
-            date: document.getElementById('meetingDate').value,
-            type: document.getElementById('meetingType').value,
-            duration: document.getElementById('meetingDuration').value,
-            notesHTML: getEditorHTML('meetingNotesEditor'),
-            notes: getEditorText('meetingNotesEditor'),
-            nextStepsHTML: getEditorHTML('meetingNextStepsEditor'),
-            nextSteps: getEditorText('meetingNextStepsEditor'),
-            participants: [...state.meetingParticipants],
-            tags: document.getElementById('meetingTags').value.split(',').map(t => t.trim()).filter(t => t),
-            meddpicc: {
-                metrics: document.getElementById('meddpiccMetrics').value.trim(),
-                economicBuyer: document.getElementById('meddpiccEconomicBuyer').value.trim(),
-                decisionCriteria: document.getElementById('meddpiccDecisionCriteria').value.trim(),
-                decisionProcess: document.getElementById('meddpiccDecisionProcess').value.trim(),
-                paperProcess: document.getElementById('meddpiccPaperProcess').value.trim(),
-                pain: document.getElementById('meddpiccPain').value.trim(),
-                champion: document.getElementById('meddpiccChampion').value.trim(),
-                competition: document.getElementById('meddpiccCompetition').value.trim()
-            }
-        };
-        
-        // Close the editing form
-        closeInlineMeetingForm();
-    }
-    
-    // Update status to accepted
-    sharedMeeting.status = 'accepted';
-    sharedMeeting.acceptedAt = new Date().toISOString();
-    sharedMeeting.linkedType = acceptType;
-    sharedMeeting.addedToCustomerId = customerId;
-    sharedMeeting.addedToTabId = tabId;
-    
-    // ========== OFFLINE TESTING - START ==========
-    // Update in the sharer's myShares (cross-account sync)
-    const sharerUserId = sharedMeeting.sharedBy;
-    const sharerShares = JSON.parse(
-        localStorage.getItem(`taskflow_myShares_${sharerUserId}`) || '[]'
-    );
-    const correspondingShare = sharerShares.find(s => s.id === sharedMeetingId);
-    if (correspondingShare) {
-        correspondingShare.status = 'accepted';
-        localStorage.setItem(
-            `taskflow_myShares_${sharerUserId}`, 
-            JSON.stringify(sharerShares)
-        );
-    }
-    // ========== OFFLINE TESTING - END ==========
-    
-   if (acceptType === 'copy') {
-    // Create independent copy - USE EDITED DATA
-    const newMeeting = {
-        ...meetingDataToSave,
-        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        customerId: customerId,
-        customerName: customer.name,
-        tabId: tabId,
-        createdAt: new Date().toISOString(),
-        originalSharedFrom: sharedMeeting.id,
-        isPastMeeting: meetingDataToSave.isPastMeeting !== false
-    };
-    
-    state.meetings.unshift(newMeeting);
-    
-    // CREATE ASSOCIATED TASKS - use edited tasks if available
-    const tasksToCreate = editingSharedMeetingId === sharedMeetingId && state.meetingTasks.length > 0
-        ? state.meetingTasks
-        : (sharedMeeting.meetingData.associatedTasks || []);
-    
-    if (tasksToCreate.length > 0) {
-        tasksToCreate.forEach(taskItem => {
-            // If it's a string (from state.meetingTasks), use it as title
-            // If it's an object (from associatedTasks), extract data
-            const taskTitle = typeof taskItem === 'string' ? taskItem : taskItem.title;
-            const taskData = typeof taskItem === 'object' ? taskItem : {};
-            
-            const newTask = {
-                id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                title: taskTitle,
-                description: taskData.description || `From shared meeting: ${newMeeting.title}`,
-                priority: taskData.priority || 'medium',
-                status: taskData.status || 'todo',
-                dueDate: taskData.dueDate || '',
-                tags: taskData.tags || ['meeting', 'shared'],
-                color: taskData.color || 'none',
-                subtasks: taskData.subtasks || [],
-                completed: false,
-                archived: false,
-                customerId: customerId,
-                customerName: customer.name,
-                meetingId: newMeeting.id,
-                createdAt: new Date().toISOString()
-            };
-            state.tasks.unshift(newTask);
+    try {
+        // Update status in Firestore
+        await db.collection('sharedMeetings').doc(sharedMeetingId).update({
+            status: 'accepted',
+            acceptedAt: new Date().toISOString()
         });
         
-        showToast(`✅ Meeting copied with ${tasksToCreate.length} task${tasksToCreate.length !== 1 ? 's' : ''}!`, 'success');
-    } else {
-        showToast(`✅ Meeting copied to ${customer.name}!`, 'success');
+        // Update local state
+        sharedMeeting.status = 'accepted';
+        
+        // Create local copy of meeting
+        const newMeeting = {
+            ...sharedMeeting.meetingData,
+            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            customerId: customerId,
+            customerName: customer.name,
+            tabId: tabId,
+            originalSharedFrom: sharedMeetingId,
+            createdAt: new Date().toISOString()
+        };
+        
+        state.meetings.unshift(newMeeting);
+        
+        // Create tasks if included
+        if (sharedMeeting.meetingData.associatedTasks) {
+            sharedMeeting.meetingData.associatedTasks.forEach(t => {
+                state.tasks.unshift({
+                    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    ...t,
+                    customerId: customerId,
+                    customerName: customer.name,
+                    meetingId: newMeeting.id,
+                    completed: false,
+                    archived: false,
+                    createdAt: new Date().toISOString()
+                });
+            });
+        }
+        
+        saveData();
+        renderCustomerFilters();
+        closeAcceptMeetingModal();
+        selectCustomerFromOverview(customerId);
+        showToast('✅ Meeting added!', 'success');
+        
+    } catch (error) {
+        console.error('Accept error:', error);
+        showToast('❌ Failed: ' + error.message, 'error');
     }
-} else {
-    // Keep linked - add reference
-    sharedMeeting.linkedMeetingId = sharedMeeting.meetingId;
-    showToast(`✅ Meeting linked to ${customer.name}!`, 'success');
-}
-    
-       // Reset editing state
-    editingSharedMeetingId = null;
-    
-    saveSharingData();
-    saveData();
-    renderCustomerFilters();
-    closeAcceptMeetingModal();
-    
-    // Navigate to the customer view to show the meeting and tasks
-    selectCustomerFromOverview(customerId);
-    
-    // Ensure task section is visible and refreshed
-    document.querySelector('.tasks-section').style.display = 'block';
-    renderTasks();
-    updateStats();
 }
 
 
@@ -14321,18 +14157,16 @@ document.addEventListener('click', (e) => {
 });
 
 function declineSharedMeeting(sharedMeetingId) {
-    showConfirm('❌', 'Decline Share?', 'Decline this shared meeting?', () => {
-        state.sharedMeetings = state.sharedMeetings.filter(sm => sm.id !== sharedMeetingId);
-        
-        // Update in myShares
-        const share = state.myShares.find(s => s.id === sharedMeetingId);
-        if (share) {
-            share.status = 'declined';
+    showConfirm('❌', 'Decline?', 'Decline this shared meeting?', async () => {
+        try {
+            await db.collection('sharedMeetings').doc(sharedMeetingId).delete();
+            state.sharedMeetings = state.sharedMeetings.filter(sm => sm.id !== sharedMeetingId);
+            renderSharedMeetings();
+            updateShareNotificationBadge();
+            showToast('❌ Declined', 'success');
+        } catch (error) {
+            showToast('❌ Failed: ' + error.message, 'error');
         }
-        
-        saveSharingData();
-        renderSharedMeetings();
-        showToast('❌ Meeting declined', 'success');
     });
 }
 
