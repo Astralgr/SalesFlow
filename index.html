@@ -935,13 +935,17 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 .action-btn:hover .action-btn-icon svg {stroke: white;}
 
 .btn-sign-in {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px;
+    background: var(--bg-tertiary); border: 1px solid var(--border);
+    color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 8px;
     cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;
-    display: flex; align-items: center; gap: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0, 206, 200, 0.3); margin-left: auto;
+    display: flex; align-items: center; gap: 0.5rem; margin-left: auto;
 }
-.btn-sign-in:hover {transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 206, 200, 0.5);}
+.btn-sign-in:hover {
+    background: linear-gradient(135deg, #023747 0%, #1ba8af 100%);
+    color: white; border-color: #023747;
+    transform: translateY(-2px); box-shadow: 0 4px 10px rgba(27, 168, 175, 0.5);
+}
+
 .btn-sign-in svg {width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2;}
 
 .action-btn .notification-badge {
