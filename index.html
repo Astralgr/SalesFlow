@@ -13484,8 +13484,12 @@ function openShareModal(meetingId) {
 }
 
 function closeShareModal() {
-    document.getElementById('shareModal').classList.remove('active');
+    const modal = document.getElementById('shareModal');
+    modal.classList.remove('active');
+    modal.style.display = ''; // ✅ Reset inline style
     currentSharingMeetingId = null;
+    
+    console.log('Share modal closed'); // Debug log
 }
 
 // Setup share modal tabs
