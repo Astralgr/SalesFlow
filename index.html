@@ -13577,7 +13577,15 @@ async function sendShareInvite() {
         }
         if (selectedTabs.includes('actions')) {
             sharedData.associatedTasks = state.tasks.filter(t => t.meetingId === meetingId).map(t => ({
-                title: t.title, description: t.description, priority: t.priority, status: t.status
+                title: t.title || '',
+                description: t.description || '',
+                priority: t.priority || 'medium',
+                status: t.status || 'todo',
+                dueDate: t.dueDate || '',
+                tags: Array.isArray(t.tags) ? [...t.tags] : [],
+                subtasks: Array.isArray(t.subtasks) ? [...t.subtasks] : [],
+                color: t.color || 'none',
+                completed: t.completed || false
             }));
         }
         
@@ -14128,17 +14136,27 @@ isPastMeeting: true,
         
         state.meetings.unshift(newMeeting);
         
-        // Create tasks if included
-        if (sharedMeeting.meetingData.associatedTasks) {
-            sharedMeeting.meetingData.associatedTasks.forEach(t => {
+                // Create tasks if included
+        if (sharedMeeting.meetingData.associatedTasks && Array.isArray(sharedMeeting.meetingData.associatedTasks)) {
+            sharedMeeting.meetingData.associatedTasks.forEach((t, index) => {
+                // Small delay to ensure unique IDs
+                const uniqueId = `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+                
                 state.tasks.unshift({
-                    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    ...t,
+                    id: uniqueId,
+                    title: t.title || 'Untitled Task',
+                    description: t.description || '',
+                    priority: t.priority || 'medium',
+                    status: t.status || 'todo',
+                    dueDate: t.dueDate || '',
+                    tags: Array.isArray(t.tags) ? t.tags : [],
+                    color: t.color || 'none',
+                    subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+                    completed: t.completed || false,
+                    archived: false,
                     customerId: customerId,
                     customerName: customer.name,
                     meetingId: newMeeting.id,
-                    completed: false,
-                    archived: false,
                     createdAt: new Date().toISOString()
                 });
             });
