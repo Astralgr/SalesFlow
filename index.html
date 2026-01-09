@@ -4849,12 +4849,33 @@ async function handleEmailAuth(e) {
         if (isSignUpMode) {
             const cred = await auth.createUserWithEmailAndPassword(email, password);
             if (displayName) await cred.user.updateProfile({ displayName });
-            showToast('✅ Account created!', 'success');
+            await cred.user.sendEmailVerification();
+            await auth.signOut();
+            document.getElementById('authContent').innerHTML = `
+                <div style="text-align: center; padding: 1rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📧</div>
+                    <h3 style="margin-bottom: 0.5rem;">Check Your Email</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                        Verification link sent to<br><strong>${email}</strong>
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                        Click the link to verify, then sign in.
+                    </p>
+                    <button class="btn btn-primary" onclick="location.reload()" style="width: 100%;">
+                        OK
+                    </button>
+                </div>
+            `;
         } else {
-            await auth.signInWithEmailAndPassword(email, password);
+            const cred = await auth.signInWithEmailAndPassword(email, password);
+            if (!cred.user.emailVerified) {
+                await auth.signOut();
+                showToast('⚠️ Please verify your email first', 'error');
+                return;
+            }
             showToast('✅ Signed in!', 'success');
+            closeAuthModal();
         }
-        closeAuthModal();
     } catch (error) {
         showToast('❌ ' + error.message, 'error');
     }
