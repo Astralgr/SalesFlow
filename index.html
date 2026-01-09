@@ -6075,7 +6075,15 @@ document.getElementById('importFileInput').addEventListener('change', importAllD
 
 // ========== SHARING FEATURE - START ==========
 document.getElementById('sharedBtn').addEventListener('click', () => showSharedMeetings());
-document.getElementById('closeShareModalBtn').addEventListener('click', closeShareModal);
+// Share modal close button
+const closeShareBtn = document.getElementById('closeShareModalBtn');
+if (closeShareBtn) {
+    closeShareBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeShareModal();
+    };
+}
 // ========== SHARING FEATURE - END ==========
 // Setup upcoming meetings period filters
 document.querySelectorAll('.upcoming-filter-btn').forEach(btn => {
@@ -13485,11 +13493,11 @@ function openShareModal(meetingId) {
 
 function closeShareModal() {
     const modal = document.getElementById('shareModal');
-    modal.classList.remove('active');
-    modal.style.display = ''; // ✅ Reset inline style
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
     currentSharingMeetingId = null;
-    
-    console.log('Share modal closed'); // Debug log
 }
 
 // Setup share modal tabs
