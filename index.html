@@ -14144,9 +14144,13 @@ isPastMeeting: true,
             });
         }
         
-        saveData();
+                saveData();
         renderCustomerFilters();
         closeAcceptMeetingModal();
+        
+        // Update the notification badge since pending count changed
+        updateShareNotificationBadge();
+        
         selectCustomerFromOverview(customerId);
         showToast('✅ Meeting added!', 'success');
         
