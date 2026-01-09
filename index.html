@@ -4855,7 +4855,6 @@ async function handleEmailAuth(e) {
             showToast('✅ Signed in!', 'success');
         }
         closeAuthModal();
-    } catch (error) {
 } catch (error) {
     if (error.code === 'auth/user-not-found') {
         showToast('❌ No account found. Please sign up first.', 'error');
@@ -4872,6 +4871,7 @@ async function handleEmailAuth(e) {
     } else {
         showToast('❌ ' + error.message, 'error');
     }
+}
 }
 
 async function signOutUser() {
