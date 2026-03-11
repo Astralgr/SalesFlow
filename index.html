@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://js.stripe.com/v3/"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mnimi</title>
+    <title>Cnotes</title>
     <style>
        * {margin: 0; padding: 0; box-sizing: border-box;}
+
 
 :root {
     --primary: #00CEC8; --primary-dark: #00B8B3; --secondary: #00A8A3;
@@ -543,6 +545,15 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 .customer-header-name {
     font-size: 1.75rem; font-weight: var(--font-bold);
     color: white; margin-bottom: 0; line-height: 1.2; letter-spacing: -0.02em;
+}
+.customer-header-name {
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.customer-header-name:hover {
+    opacity: 0.9;
+    text-decoration: underline;
 }
 .customer-header-company {
     font-size: 0.9rem; color: rgba(255, 255, 255, 0.9);
@@ -1274,6 +1285,45 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 }
 /* ========== PINNED CUSTOMERS STYLES - END ========== */
 
+/* ========== MONETIZATION STYLES - START ========== */
+.customer-slots-container{padding:0.75rem 0.6rem;margin-bottom:0.5rem}
+.customer-slots-label{font-size:0.55rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center}
+.customer-slots-bar{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-bottom:0.35rem}
+.customer-slots-fill{height:100%;border-radius:3px;transition:width 0.3s,background 0.3s}
+.customer-slots-fill.normal{background:var(--primary)}
+.customer-slots-fill.warning{background:#f59e0b}
+.customer-slots-fill.limit{background:#ef4444}
+.customer-slots-text{font-size:0.7rem;color:rgba(255,255,255,0.7);display:flex;justify-content:space-between;align-items:center}
+.customer-slots-upgrade{color:var(--primary);cursor:pointer;font-weight:600;transition:all 0.2s}
+.customer-slots-upgrade:hover{text-decoration:underline;color:#00E5DD}
+.frozen-customer{opacity:0.5;position:relative}
+.frozen-customer::after{content:'VIEW ONLY';position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);font-size:0.5rem;background:rgba(107,114,128,0.8);color:white;padding:0.15rem 0.4rem;border-radius:3px;font-weight:700;letter-spacing:0.05em}
+.frozen-banner{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:-0.75rem -1.5rem 1rem -1.5rem;font-size:0.85rem;font-weight:500}
+.frozen-banner button{background:#92400e;color:white;border:none;padding:0.4rem 1rem;border-radius:6px;font-weight:600;cursor:pointer;white-space:nowrap}
+.upgrade-modal-content{max-width:1000px !important;width:98% !important}
+.plans-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;margin:1.5rem 0}
+.plan-card{background:var(--bg-secondary);border:2px solid var(--border);border-radius:10px;padding:1.25rem 1rem;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;display:flex;flex-direction:column;min-height:240px}
+.plan-card:hover{border-color:#023747;transform:translateY(-2px);box-shadow:0 4px 12px var(--shadow);background:linear-gradient(135deg,#023747 0%,#1ba8af 100%)}
+.plan-card.current{border-color:var(--primary);background:linear-gradient(135deg,rgba(0,206,200,0.1),rgba(0,168,163,0.05))}
+.plan-card.popular::before{content:'POPULAR';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:0.6rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:4px;letter-spacing:0.05em}
+.plan-card.current:hover{background:linear-gradient(135deg,rgba(0,206,200,0.1),rgba(0,168,163,0.05)) !important}
+.plan-card.current:hover .plan-name,.plan-card.current:hover .plan-price,.plan-card.current:hover .plan-price span,.plan-card.current:hover .plan-limit{color:var(--text-primary) !important}
+.plan-card:hover .plan-name,.plan-card:hover .plan-price,.plan-card:hover .plan-price span,.plan-card:hover .plan-limit{color:white}
+.plan-name{font-size:0.85rem;font-weight:700;color:var(--text-secondary);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em}
+.plan-price{font-size:2rem;font-weight:800;color:var(--text-primary);line-height:1}
+.plan-price span{font-size:0.85rem;font-weight:500;color:var(--text-secondary)}
+.plan-limit{font-size:0.85rem;color:var(--text-secondary);margin:1rem 0;padding:0.75rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.plan-btn{width:100%;padding:0.6rem;border:none;border-radius:6px;font-weight:600;cursor:pointer;transition:all 0.2s;margin-top:auto}
+.plan-btn.primary{background:linear-gradient(135deg,#023747,#1ba8af);color:white}
+.plan-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(27,168,175,0.4)}
+.plan-btn.secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border)}
+.billing-toggle{display:flex;justify-content:center;gap:0.5rem;align-items:center;margin-top:1rem;font-size:0.85rem;color:var(--text-secondary)}
+.billing-toggle button{padding:0.4rem 1rem;border:1px solid var(--border);background:transparent;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s}
+
+.billing-toggle button.active{background:linear-gradient(135deg,#023747 0%,#1ba8af 100%);color:white;border-color:#023747}
+@media(max-width:600px){.plans-grid{grid-template-columns:1fr 1fr}.plan-price{font-size:1.5rem}}
+/* ========== MONETIZATION STYLES - END ========== */
+
 .header {
     position: sticky; top: 0; background: var(--bg-primary);
     border-bottom: 1px solid var(--border); padding: 0.75rem 1.5rem;
@@ -1550,7 +1600,7 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 }
 
 .empty-state-compact {
-    text-align: center; padding: 0.35rem; color: var(--text-secondary);
+    text-align: center; padding: 1.5rem 0.35rem; color: var(--text-secondary);
     background: var(--bg-secondary); border-radius: 8px;
     font-size: 0.8rem;
 }
@@ -2835,7 +2885,7 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 </head>
 <body>
     <aside class="sidebar">
-    <div class="sidebar-logo">Mnimi</div>
+    <div class="sidebar-logo">Cnotes</div>
 
     <div>
         <button class="action-btn btn-home" id="homeBtn" style="margin-bottom: 1rem;">
@@ -2928,6 +2978,13 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
             <div style="height: 2px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: 0.3; margin: 1rem 0.5rem;"></div>
 
 <div class="sidebar-customers-scroll">
+
+<!-- Customer Slots Progress -->
+<div class="customer-slots-container" id="customerSlotsContainer">
+    <div class="customer-slots-label"><span>CUSTOMER SLOTS</span></div>
+    <div class="customer-slots-bar"><div class="customer-slots-fill normal" id="customerSlotsFill"></div></div>
+    <div class="customer-slots-text"><span id="customerSlotsCount">0 of 6</span><span class="customer-slots-upgrade" onclick="openUpgradeModal()">Upgrade</span></div>
+</div>
     <!-- Priority Accounts Section -->
     <div id="priorityAccountsSection" style="display: none;">
         <div class="priority-section-header">
@@ -3047,6 +3104,7 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 </div>
         </div>
 <div class="customer-header-banner" id="customerHeaderBanner">
+<div class="frozen-banner" id="frozenBanner" style="display:none;"><span>This customer is view-only. Upgrade to edit and add meetings.</span><button onclick="openUpgradeModal()">Upgrade Now</button></div>
     <div class="customer-banner-top">
         <div class="customer-header-left">
             <div class="customer-header-icon">🏢</div>
@@ -3612,7 +3670,7 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 <div class="upcoming-meetings-section" id="upcomingMeetingsSection">
     <div class="upcoming-meetings-header">
     <h2 class="upcoming-meetings-title">
-        <span>🗓️</span>
+        <span></span>
         <span>Upcoming Meetings</span>
     </h2>
     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -4480,8 +4538,14 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
             </div>
             <form id="noteForm">
                 <input type="hidden" id="noteId">
-                <div class="form-group">
-                    <label class="form-label">Content *</label>
+<div class="form-group">
+    <label class="form-label">Customer</label>
+    <select class="form-select" id="noteCustomer">
+        <option value="">None</option>
+    </select>
+</div>
+<div class="form-group">
+    <label class="form-label">Content *</label>
                     <textarea class="form-textarea" id="noteContent" required style="min-height: 120px;"></textarea>
                 </div>
                 <div class="form-footer">
@@ -4521,6 +4585,21 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
             </div>
         </div>
     </div>
+
+<!-- Upgrade Modal -->
+<div class="modal" id="upgradeModal">
+    <div class="modal-content upgrade-modal-content">
+        <div class="modal-header"><h3 class="modal-title">Choose Your Plan</h3><button class="close-btn" onclick="closeUpgradeModal()">×</button></div>
+        <p style="text-align:center;color:var(--text-secondary);margin-bottom:1rem">Unlock more customers and keep growing your business</p>
+        <div class="plans-grid">
+            <div class="plan-card current" data-plan="free"><div class="plan-name">Free</div><div class="plan-price">$0<span>/mo</span></div><div class="plan-limit">6 customers</div><button class="plan-btn secondary">Current Plan</button></div>
+            <div class="plan-card popular" data-plan="starter"><div class="plan-name">Starter</div><div class="plan-price">$9<span>/mo</span></div><div class="plan-limit">15 customers</div><button class="plan-btn primary" onclick="selectPlan('starter')">Upgrade</button></div>
+            <div class="plan-card" data-plan="pro"><div class="plan-name">Pro</div><div class="plan-price">$19<span>/mo</span></div><div class="plan-limit">50 customers</div><button class="plan-btn primary" onclick="selectPlan('pro')">Upgrade</button></div>
+            <div class="plan-card" data-plan="unlimited"><div class="plan-name">Unlimited</div><div class="plan-price">$29<span>/mo</span></div><div class="plan-limit">Unlimited</div><button class="plan-btn primary" onclick="selectPlan('unlimited')">Upgrade</button></div>
+        </div>
+        <div class="billing-toggle"><span>Annual billing: Save 20%</span><button class="active" onclick="setBilling('monthly')">Monthly</button><button onclick="setBilling('annual')">Annual</button></div>
+    </div>
+</div>
 
 <!-- Auth Modal -->
 <div class="modal" id="authModal">
@@ -4658,13 +4737,13 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 <div class="form-group">
     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
         <input type="checkbox" id="shareNotifyEmail" checked>
-        <span> Notify via email</span>
+        <span> Notify via email (coming soon)</span>
     </label>
 </div>
                 
                 <div class="form-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeShareModal()">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="sendShareInvite()">Send Invite ➤</button>
+                    <button type="button" class="btn btn-primary" onclick="sendShareInvite()">Share Meeting ➤</button>
                 </div>
             </div>
             
@@ -5184,6 +5263,7 @@ async function saveUserDataToFirestore() {
 }
 
        const state = {
+subscription: { plan: 'free', status: 'active' },
     tasks: [],
     notes: [],
     customers: [],
@@ -5218,6 +5298,7 @@ async function saveUserDataToFirestore() {
     meetingParticipants: [],     
     selectedCustomerId: null,
     selectedTaskCustomerId: null,
+selectedNoteCustomerId: null,
     selectedCustomerInfoCustomerId: null,
     selectedTag: null,
     currentMeetingTab: 'info',
@@ -5499,6 +5580,8 @@ function updateCustomerBanner(customerId) {
     const detailsEl = document.getElementById('customerBannerDetails');
     
     nameEl.textContent = customer.name;
+nameEl.style.cursor = 'pointer';
+nameEl.onclick = () => editCustomerFromBanner();
     updateBannerPinButton(customerId);
     
 const logoEl = document.querySelector('.customer-header-icon');
@@ -6313,41 +6396,253 @@ function downloadConsolidatedNotes() {
     showToast('✅ Downloaded!', 'success');
 }
 
+// ========== MONETIZATION FUNCTIONS - START ==========
+const PLAN_LIMITS = { free: 6, starter: 15, pro: 50, unlimited: Infinity };
+
+function getCustomerLimit() { return PLAN_LIMITS[state.subscription.plan] || 6; }
+
+function canAddCustomer() { return state.customers.length < getCustomerLimit(); }
+
+function canEditCustomer(customerId) {
+    if (state.subscription.status !== 'active' && state.subscription.plan !== 'free') {
+        const sortedCustomers = [...state.customers].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        const customerIndex = sortedCustomers.findIndex(c => c.id === customerId);
+        return customerIndex < 6;
+    }
+    const limit = getCustomerLimit();
+    if (limit === Infinity) return true;
+    const sortedCustomers = [...state.customers].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const customerIndex = sortedCustomers.findIndex(c => c.id === customerId);
+    return customerIndex < limit;
+}
+
+function isCustomerFrozen(customerId) { return !canEditCustomer(customerId); }
+
+function renderCustomerSlots() {
+    const container = document.getElementById('customerSlotsContainer');
+    const fill = document.getElementById('customerSlotsFill');
+    const count = document.getElementById('customerSlotsCount');
+    const limit = getCustomerLimit();
+    container.style.display = 'block';
+    const used = state.customers.length;
+    if (limit === Infinity) {
+        fill.style.width = '100%';
+        fill.className = 'customer-slots-fill normal';
+        count.textContent = used + ' customers (Unlimited)';
+        return;
+    }
+    const pct = Math.min((used / limit) * 100, 100);
+    fill.style.width = pct + '%';
+    fill.className = 'customer-slots-fill ' + (used >= limit ? 'limit' : used >= limit - 1 ? 'warning' : 'normal');
+    count.textContent = used + ' of ' + limit;
+}
+
+function openUpgradeModal() { document.getElementById('upgradeModal').classList.add('active'); updatePlanCards(); }
+function closeUpgradeModal() { document.getElementById('upgradeModal').classList.remove('active'); }
+
+function updatePlanCards() {
+    document.querySelectorAll('.plan-card').forEach(card => {
+        const plan = card.dataset.plan;
+        const btn = card.querySelector('.plan-btn');
+        card.classList.remove('current');
+        if (plan === state.subscription.plan) {
+            card.classList.add('current');
+            btn.className = 'plan-btn secondary';
+            btn.textContent = 'Current Plan';
+            btn.onclick = null;
+        } else {
+            btn.className = 'plan-btn primary';
+            btn.textContent = 'Upgrade';
+            btn.onclick = () => selectPlan(plan);
+        }
+    });
+    
+    // Show/hide cancel button for paid users
+    let cancelDiv = document.getElementById('cancelSubscriptionDiv');
+    if (state.subscription.plan !== 'free') {
+        if (!cancelDiv) {
+            cancelDiv = document.createElement('div');
+            cancelDiv.id = 'cancelSubscriptionDiv';
+            cancelDiv.style.cssText = 'text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+            cancelDiv.innerHTML = '<button onclick="cancelSubscription()" style="background:transparent;border:none;color:var(--text-secondary);cursor:pointer;font-size:0.8rem;text-decoration:underline">Cancel Subscription</button>';
+            document.querySelector('.upgrade-modal-content').appendChild(cancelDiv);
+        }
+    } else if (cancelDiv) {
+        cancelDiv.remove();
+    }
+}
+
+async function cancelSubscription() {
+    try {
+        const getPortal = firebase.functions().httpsCallable('createStripePortal');
+        const result = await getPortal({ userId: auth.currentUser.uid });
+        window.location.href = result.data.url; // Stripe handles cancel/upgrade UI
+    } catch (error) {
+        showToast('❌ Failed: ' + error.message, 'error');
+    }
+}
+
+async function selectPlan(plan) {
+  // Free plan doesn't need Stripe
+  if (plan === 'free') {
+    state.subscription.plan = 'free';
+    state.subscription.status = 'active';
+    saveSubscription();
+    closeUpgradeModal();
+    renderCustomerSlots();
+    renderCustomerFilters();
+    if (state.currentCustomer !== 'all') updateFrozenBanner();
+    showToast('Downgraded to Free plan', 'success');
+    return;
+  }
+
+  // Get billing period from your toggle state
+  const billing = document.querySelector('.billing-toggle')?.checked ? 'annual' : 'monthly';
+  // If the above doesn't work, use this fallback:
+  // const billing = 'monthly';
+
+  // Get current user info
+  const userEmail = state.user?.email || firebase?.auth()?.currentUser?.email || localStorage.getItem('userEmail');
+  const userId    = state.user?.id    || firebase?.auth()?.currentUser?.uid  || localStorage.getItem('userId');
+
+  if (!userEmail || !userId) {
+    showToast('Please sign in first', 'error');
+    openSignInModal(); // replace with whatever your sign-in function is called
+    return;
+  }
+
+  showToast('Redirecting to checkout...', 'success');
+
+  try {
+    const response = await fetch('http://localhost:3000/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan, billing, userId, userEmail }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      showToast('Checkout error: ' + data.error, 'error');
+      return;
+    }
+
+    // Redirect to Stripe hosted checkout page
+    window.location.href = data.url;
+
+  } catch (err) {
+    console.error('Stripe error:', err);
+    showToast('Could not connect to payment server. Is server.js running?', 'error');
+  }
+}
+
+
+let currentBilling = 'monthly';
+const planPrices = { free: 0, starter: 9, pro: 19, unlimited: 29 };
+
+function setBilling(type) {
+    currentBilling = type;
+    document.querySelectorAll('.billing-toggle button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.querySelectorAll('.plan-card').forEach(card => {
+        const plan = card.dataset.plan;
+        const price = planPrices[plan];
+        const displayPrice = type === 'annual' ? Math.round(price * 0.8) : price;
+        card.querySelector('.plan-price').innerHTML = `$${displayPrice}<span>/mo</span>`;
+    });
+}
+
+function updateFrozenBanner() {
+    const banner = document.getElementById('frozenBanner');
+    if (state.currentCustomer && state.currentCustomer !== 'all' && isCustomerFrozen(state.currentCustomer)) {
+        banner.style.display = 'flex';
+    } else {
+        banner.style.display = 'none';
+    }
+}
+
+function showLimitReachedModal() {
+    document.getElementById('confirmIcon').textContent = '';
+    document.getElementById('confirmTitle').textContent = 'Customer Limit Reached';
+    document.getElementById('confirmMessage').textContent = 'You have used all ' + getCustomerLimit() + ' customer slots on your current plan. Upgrade to add more customers.';
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.textContent = 'View Plans';
+    confirmBtn.className = 'btn btn-primary';
+    const newBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+    newBtn.addEventListener('click', () => { document.getElementById('confirmModal').classList.remove('active'); openUpgradeModal(); });
+    document.getElementById('cancelConfirmBtn').textContent = 'Maybe Later';
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+function saveSubscription() { localStorage.setItem('cnotes_subscription', JSON.stringify(state.subscription)); }
+function loadSubscription() { const s = localStorage.getItem('cnotes_subscription'); if (s) state.subscription = JSON.parse(s); }
+// ========== MONETIZATION FUNCTIONS - END ==========
+
 
 function init() {
-    fixDuplicateMeetingIds();
-    setupShareModalTabs();
 
-    
-    setupEventListeners();
-    setupColorPicker();
-    setupCustomerCombobox();
-    setupTaskCustomerCombobox();
-    setupCustomerInfoCustomerCombobox();
-    setupInlineTabs();
-    loadCustomMeetingTypes();
-    setupRichTextEditor();
-    setupMEDDPICCQuickAdd();
-    setupActionItemQuickAdd();
-    updateStats();
-    renderCustomerFilters();
-    renderNotes();
-    showHome();
+  fixDuplicateMeetingIds();
+  setupShareModalTabs();
+  setupSectionResize();
+  setupEventListeners();
+  setupColorPicker();
+  setupCustomerCombobox();
+  setupTaskCustomerCombobox();
+  setupCustomerInfoCustomerCombobox();
+  setupInlineTabs();
+  loadCustomMeetingTypes();
+  setupRichTextEditor();
+  setupMEDDPICCQuickAdd();
+  setupActionItemQuickAdd();
+  updateStats();
+  renderCustomerFilters();
+  renderNotes();
+  showHome();
 
-     // Reset state to ensure clean start
-    state.currentCustomer = 'all';
-    state.currentMeetingTab = 'all';
-    
-    // Show dashboard (will be called again by auth callback, but ensures immediate display)
-    showDashboard();
+  // Reset state to ensure clean start
+  state.currentCustomer = 'all';
+  state.currentMeetingTab = 'all';
 
-    // Auto-refresh upcoming meetings every 30 seconds to update statuses
-    setInterval(() => {
-        if (document.getElementById('upcomingMeetingsSection').classList.contains('active')) {
-            renderUpcomingMeetings();
+  // Show dashboard (will be called again by auth callback, but ensures immediate display)
+  showDashboard();
+
+  // Auto-refresh upcoming meetings every 30 seconds to update statuses
+  setInterval(() => {
+    if (document.getElementById('upcomingMeetingsSection').classList.contains('active')) {
+      renderUpcomingMeetings();
+    }
+  }, 30000);
+
+  // ── ADD THIS BLOCK — Stripe payment return handler ──────────────────────
+  const params    = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+
+  if (sessionId) {
+    fetch('http://localhost:3000/verify-session?session_id=' + sessionId)
+      .then(r => r.json())
+      .then(data => {
+        if (data.plan) {
+          state.subscription.plan   = data.plan;
+          state.subscription.status = 'active';
+          saveSubscription();
+          renderCustomerSlots();
+          renderCustomerFilters();
+          if (state.currentCustomer !== 'all') updateFrozenBanner();
+          showToast('Welcome to the ' + data.plan.charAt(0).toUpperCase() + data.plan.slice(1) + ' plan! 🎉', 'success');
+          // Clean URL so refreshing doesn't re-trigger this
+          window.history.replaceState({}, '', window.location.pathname);
         }
-    }, 30000);
+      })
+      .catch(err => {
+        console.error('Stripe verification error:', err);
+        showToast('Could not verify payment. Please contact support.', 'error');
+      });
+  }
+  // ── END OF STRIPE BLOCK ─────────────────────────────────────────────────
+
 }
+
 
         function setupEventListeners() {
             document.getElementById('homeBtn').addEventListener('click', () => showDashboard());
@@ -6483,14 +6778,14 @@ document.getElementById('participantPhoneInput').addEventListener('keypress', (e
 
 
 
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    state.currentFilter = btn.dataset.filter;
-                    renderTasks();
-                });
-            });
+document.querySelectorAll('#taskFilters .filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#taskFilters .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.currentFilter = btn.dataset.filter;
+        renderTasks();
+    });
+});
 
             document.querySelectorAll('.view-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -6866,6 +7161,7 @@ function closeInlineMeetingForm() {
 
 
 function openInlineCustomerInfoFormForCustomer(customerId) {
+if (isCustomerFrozen(customerId)) { showToast('Upgrade to edit this customer', 'error'); openUpgradeModal(); return; }
     const customer = state.customers.find(c => c.id === customerId);
     if (!customer) return;
     
@@ -6897,6 +7193,7 @@ function openInlineCustomerInfoFormForCustomer(customerId) {
 }
 
 function openInlineMeetingFormForCustomer(customerId, isPastMeeting = true) {
+if (isCustomerFrozen(customerId)) { showToast('Upgrade to add meetings to this customer', 'error'); openUpgradeModal(); return; }
     const customer = state.customers.find(c => c.id === customerId);
     if (!customer) return;
     
@@ -7243,6 +7540,7 @@ function showDashboard() {
     
     // Hide customer header banner
     document.getElementById('customerHeaderBanner').classList.remove('active');
+document.getElementById('frozenBanner').style.display = 'none';
     
     updateSectionTitle();
     renderTasks();
@@ -7283,6 +7581,7 @@ function filterCustomersList(filter) {
 function renderAllCustomersList() {
     const container = document.getElementById('customersListContent');
     const empty = document.getElementById('allCustomersEmpty');
+    const customersList = document.getElementById('allCustomersList'); // ADD THIS LINE
     const localSearch = document.getElementById('customersSearchInput').value.toLowerCase();
     const searchQuery = state.searchQuery || localSearch;
     let customers = [...state.customers];
@@ -7315,20 +7614,35 @@ function renderAllCustomersList() {
     }
     
     document.getElementById('allCustomersTotal').textContent = state.customers.length;
-    
+
     if (customers.length === 0) {
         container.innerHTML = '';
+        customersList.style.display = 'none'; // HIDE THE HEADER ROW
         empty.style.display = 'block';
-        empty.innerHTML = searchQuery 
-            ? `<div>No results for "${escapeHtml(searchQuery)}"</div>`
-            : `<button class="btn-schedule-meeting" onclick="openAddCustomerForm()">+ Add First Customer</button>`;
+        
+        if (searchQuery) {
+            empty.innerHTML = `
+                <div class="empty-state-icon">🔍</div>
+                <div>No results for "${escapeHtml(searchQuery)}"</div>
+            `;
+        } else {
+            empty.innerHTML = `
+                <div class="empty-state-icon"></div>
+                <div style="margin-bottom: 1rem;">No customers yet</div>
+                <button class="btn-schedule-meeting" onclick="openAddCustomerForm()" style="margin: 0 auto; display: inline-flex;">
+                    <span>+</span>
+                    <span>Add Customer</span>
+                </button>
+            `;
+        }
         return;
     }
     
+    // SHOW THE LIST WHEN THERE ARE CUSTOMERS
+    customersList.style.display = 'block';
     empty.style.display = 'none';
     
-    container.innerHTML = customers.map(customer => {
-        const logoHtml = customer.website 
+    container.innerHTML = customers.map(customer => {        const logoHtml = customer.website 
             ? `<img class="customer-logo" src="https://www.google.com/s2/favicons?domain=${customer.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]}&sz=128" onerror="this.outerHTML=getBuildingSVG(20)">`
             : getBuildingSVG(20);
         
@@ -7473,7 +7787,7 @@ if (upcomingMeetings.length === 0) {
     empty.removeAttribute('style');
     empty.className = 'empty-state-compact';
     empty.style.display = 'block';
-    
+
     // Determine button function based on whether viewing specific customer or all
     const buttonFunction = state.currentCustomer !== 'all' 
         ? `openInlineMeetingFormForCustomer('${state.currentCustomer}', false)` 
@@ -8001,22 +8315,25 @@ if (state.searchQuery) {
                 <div>No results for "${escapeHtml(state.searchQuery)}"</div>
             `;
         } else {
-            empty.innerHTML = `
-                <div class="empty-state-icon">📅</div>
-                <div>No customer meetings yet</div>
-            `;
-        }
+    empty.innerHTML = `
+        <div class="empty-state-icon"></div>
+        <div style="margin-bottom: 1rem;">No customer meetings yet</div>
+        <button class="btn-schedule-meeting" onclick="openInlineMeetingForm()" style="margin: 0 auto; display: inline-flex;">
+            <span>+</span>
+            <span>Meeting</span>
+        </button>
+    `;
+}
         return;
     }
     
     empty.style.display = 'none';
     
-    // Update section title with count
-    const sectionTitle = document.querySelector('#customerActivitySection .section-title');
-    if (sectionTitle) {
-        const uniqueCustomers = [...new Set(filteredMeetings.map(x => x.customer.id))].length;
-        sectionTitle.textContent = `Customer Activity (${filteredMeetings.length} meeting${filteredMeetings.length > 1 ? 's' : ''} from ${uniqueCustomers} customer${uniqueCustomers > 1 ? 's' : ''})`;
-    }
+// Update section title with count
+const sectionTitle = document.querySelector('#customerActivitySection .section-title');
+if (sectionTitle) {
+    sectionTitle.textContent = `Customer Activity (${filteredMeetings.length})`;
+}
     
     // Build header + rows
     let html = `
@@ -8171,6 +8488,7 @@ hideAllCustomersSection();
     renderTasks();
     renderNotes();
     renderTimeline();
+updateFrozenBanner();
 }
 
 function showCustomerParticipantsSection(customerId) {
@@ -8596,8 +8914,8 @@ if (state.currentMeetingTab === 'individual') {
     empty.removeAttribute('style'); 
     empty.className = 'empty-state-compact';
     empty.innerHTML = `
-        <div class="empty-state-compact-icon">📅</div>
-        <div>No meetings</div>
+        <div class="empty-state-compact-icon"></div>
+        <div></div>
         <button class="btn-schedule-meeting" onclick="openInlineMeetingFormForCustomer('${customerId}')" style="margin: 0 auto; display: inline-flex;">
             <span>+</span>
             <span>Meeting</span>
@@ -9572,6 +9890,8 @@ document.getElementById('customerId').value = '';
 
        function handleCustomerSubmit(e) {
     e.preventDefault();
+
+
     
     const existingId = document.getElementById('customerId').value;
     const isEditing = state.editingCustomer && existingId;
@@ -9698,29 +10018,24 @@ function renderCustomerFilters() {
     const pinnedCustomers = state.customers.filter(c => c.pinned);
     
     // Helper function to create customer button HTML
-    const createCustomerButton = (customer, isPinned) => `
-        <button class="category-filter ${isPinned ? 'pinned-customer' : ''}" data-customer="${customer.id}">
-            <span class="pin-star ${isPinned ? 'pinned' : ''}" onclick="event.stopPropagation(); togglePinCustomer('${customer.id}', event)" title="${isPinned ? 'Unpin' : 'Pin to Priority'}">
-                ${isPinned ? '★' : '☆'}
-            </span>
+    const createCustomerButton = (customer, isPinned) => {
+    const frozen = isCustomerFrozen(customer.id);
+    return `
+        <button class="category-filter ${isPinned ? 'pinned-customer' : ''} ${frozen ? 'frozen-customer' : ''}" data-customer="${customer.id}">
+            <span class="pin-star ${isPinned ? 'pinned' : ''}" onclick="event.stopPropagation(); togglePinCustomer('${customer.id}', event)" title="${isPinned ? 'Unpin' : 'Pin to Priority'}">${isPinned ? '★' : '☆'}</span>
             <span class="category-filter-name">${escapeHtml(customer.name)}</span>
             <span class="customer-count">${taskCounts[customer.id] || 0}</span>
             <div class="customer-filter-actions">
                 <div class="customer-filter-btn" onclick="event.stopPropagation(); openEditCustomerForm('${customer.id}')" title="Edit">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
+                    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </div>
                 <div class="customer-filter-btn delete" onclick="event.stopPropagation(); deleteCustomerFromSidebar('${customer.id}')" title="Delete">
-                    <svg viewBox="0 0 24 24">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
+                    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </div>
             </div>
         </button>
     `;
+};
     
     // Render pinned customers section
     if (pinnedCustomers.length > 0) {
@@ -9775,6 +10090,7 @@ function renderCustomerFilters() {
         });
     });
     
+renderCustomerSlots();
     // Refresh all customers list if visible
     if (document.getElementById('allCustomersSection').classList.contains('active')) {
         renderAllCustomersList();
@@ -9925,6 +10241,8 @@ function renderCustomerFilters() {
 
 function handleMeetingSubmit(e) {
     e.preventDefault();
+const isEditing = state.editingCustomer && document.getElementById('customerId').value;
+if (!isEditing && !canAddCustomer()) { showLimitReachedModal(); return; }
     
     // Clear previous errors
     document.querySelectorAll('.form-input, .form-textarea, .customer-combobox-input').forEach(el => {
@@ -11078,41 +11396,50 @@ renderTimeline();
 closeTaskModal();
         }
 
-        function openNoteModal(note = null) {
-            state.editingNote = note;
-            if (note) {
-                document.getElementById('noteId').value = note.id;
-                document.getElementById('noteContent').value = note.content;
-            } else {
-                document.getElementById('noteForm').reset();
-            }
-            document.getElementById('noteModal').classList.add('active');
-        }
+function openNoteModal(note = null) {
+    state.editingNote = note;
+    const select = document.getElementById('noteCustomer');
+    select.innerHTML = '<option value="">None</option>' + state.customers.map(c => 
+        `<option value="${c.id}">${escapeHtml(c.name)}</option>`
+    ).join('');
+    
+    if (note) {
+        document.getElementById('noteId').value = note.id;
+        document.getElementById('noteContent').value = note.content;
+        select.value = note.customerId || '';
+    } else {
+        document.getElementById('noteForm').reset();
+        select.value = (state.currentCustomer !== 'all') ? state.currentCustomer : '';
+    }
+    document.getElementById('noteModal').classList.add('active');
+}
 
-        function closeNoteModal() {
-            document.getElementById('noteModal').classList.remove('active');
-            state.editingNote = null;
-        }
-
-        function handleNoteSubmit(e) {
-            e.preventDefault();
-            const note = {
-                id: document.getElementById('noteId').value || Date.now().toString(),
-                content: document.getElementById('noteContent').value.trim(),
-                createdAt: state.editingNote?.createdAt || new Date().toISOString()
-            };
-            if (state.editingNote) {
-                const index = state.notes.findIndex(n => n.id === note.id);
-                state.notes[index] = note;
-                showToast('Updated!', 'success');
-            } else {
-                state.notes.unshift(note);
-                showToast('Created!', 'success');
-            }
-            saveData();
-            renderNotes();
-            closeNoteModal();
-        }
+function handleNoteSubmit(e) {
+    e.preventDefault();
+    const customerId = document.getElementById('noteCustomer').value;
+    const customer = state.customers.find(c => c.id === customerId);
+    
+    const isEditing = !!state.editingNote; // Save this BEFORE closeNoteModal
+    
+    const note = {
+        id: document.getElementById('noteId').value || Date.now().toString(),
+        content: document.getElementById('noteContent').value.trim(),
+        customerId: customerId || null,
+        customerName: customer?.name || '',
+        createdAt: state.editingNote?.createdAt || new Date().toISOString()
+    };
+    
+    if (state.editingNote) {
+        const index = state.notes.findIndex(n => n.id === note.id);
+        state.notes[index] = note;
+    } else {
+        state.notes.unshift(note);
+    }
+    saveData();
+    renderNotes();
+    closeNoteModal();
+    showToast(isEditing ? 'Updated!' : 'Created!', 'success'); // Now uses saved value
+}
 
         let currentExportData = null;
 
@@ -11378,7 +11705,7 @@ function cycleTaskStatus(taskId) {
         }
 
         function deleteNote(id) {
-            showConfirm('🗑️', 'Delete?', 'Delete note?', () => {
+            showConfirm('🗑️', 'Delete note ?', '', () => {
                 state.notes = state.notes.filter(n => n.id !== id);
                 saveData();
                 renderNotes();
@@ -11764,6 +12091,7 @@ const headerAddButton = document.querySelector('.tasks-section .btn-add-meeting'
 if (tasks.length === 0) {
     container.innerHTML = '';
     empty.style.display = 'block';
+    empty.className = 'empty-state-compact';
     
     // Hide header button when empty
     if (headerAddButton) headerAddButton.style.display = 'none';
@@ -11773,16 +12101,16 @@ if (tasks.length === 0) {
             <div class="empty-state-icon">🔍</div>
             <div>No results for "${escapeHtml(state.searchQuery)}"</div>
         `;
-    } else {
-        empty.innerHTML = `
-            <div class="empty-state-icon">✨</div>
-            <div>No tasks yet</div>
-            <button class="btn-schedule-meeting" onclick="openTaskModal()" style="margin: 0 auto; display: inline-flex;">
-                <span>+</span>
-                <span>Task</span>
-            </button>
-        `;
-    }
+} else {
+    empty.innerHTML = `
+        <div class="empty-state-icon">✨</div>
+        <div style="margin-bottom: 1rem;">No tasks yet</div>
+        <button class="btn-schedule-meeting" onclick="openTaskModal()" style="margin: 0 auto; display: inline-flex;">
+            <span>+</span>
+            <span>Task</span>
+        </button>
+    `;
+}
     return;
 }
 
@@ -11794,6 +12122,21 @@ empty.style.display = 'none';
     empty.style.display = 'none';
     container.innerHTML = tasks.map((task, index) => createTaskCard(task, index + 1)).join('');
     setupDragDrop();
+}
+
+function setupSectionResize() {
+    ['customerActivitySection', 'allCustomersSection'].forEach(id => {
+        const section = document.getElementById(id);
+        
+        // Load saved height
+        const savedHeight = localStorage.getItem(`height_${id}`);
+        if (savedHeight) section.style.height = savedHeight;
+        
+        // Save height on mouseup (after resize)
+        section.addEventListener('mouseup', () => {
+            localStorage.setItem(`height_${id}`, section.style.height);
+        });
+    });
 }
 
 function renderKanban() {
@@ -12038,7 +12381,13 @@ function renderNotes() {
     const empty = document.getElementById('notesEmpty');
     const notesContainer = document.getElementById('notesContainer');
     
-    if (state.notes.length === 0) {
+    // Filter notes by customer
+    let notes = state.notes;
+    if (state.currentCustomer !== 'all') {
+        notes = notes.filter(n => n.customerId === state.currentCustomer);
+    }
+    
+    if (notes.length === 0) {
         container.innerHTML = '';
         empty.style.display = 'block';
         empty.innerHTML = `
@@ -12067,10 +12416,12 @@ function renderNotes() {
         'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
     ];
     
-    container.innerHTML = state.notes.map((note, i) => `
+        container.innerHTML = notes.map((note, i) => `
         <div class="note-box" style="background: ${gradients[i % gradients.length]}" draggable="true" data-note-id="${note.id}">
             <div class="note-number">${i + 1}</div>
-            <div class="note-content">${escapeHtml(note.content)}</div>
+${note.customerName ? `<div style="font-size: 0.7rem; font-weight: 700; opacity: 0.9; margin-bottom: 0.35rem;"> ${escapeHtml(note.customerName)}</div>` : ''}
+<div class="note-content">${escapeHtml(note.content)}</div>
+
             <div class="note-actions">
                 <button class="note-btn" onclick="event.stopPropagation(); editNote('${note.id}')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -12093,6 +12444,10 @@ function updateStats() {
     // Statistics feature removed
 }
 
+function closeNoteModal() {
+    document.getElementById('noteModal').classList.remove('active');
+    state.editingNote = null;
+}
         
 function handleSearch(e) {
     state.searchQuery = e.target.value.toLowerCase();
@@ -12138,12 +12493,12 @@ function saveData() {
         if (auth.currentUser) {
             saveUserDataToFirestore();
         } else {
-            localStorage.setItem('taskflow_tasks', JSON.stringify(state.tasks));
-            localStorage.setItem('taskflow_notes', JSON.stringify(state.notes));
-            localStorage.setItem('taskflow_customers', JSON.stringify(state.customers));
-            localStorage.setItem('taskflow_meetings', JSON.stringify(state.meetings));
-            localStorage.setItem('taskflow_CustomerInfos', JSON.stringify(state.CustomerInfos));
-            localStorage.setItem('taskflow_meetingTabs', JSON.stringify(state.meetingTabs));
+            localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
+            localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
+            localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
+            localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
+            localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
+            localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
         }
     }, 300);
 }
@@ -12165,7 +12520,7 @@ function exportAllData() {
             meetingTabs: state.meetingTabs,
             sharedMeetings: state.sharedMeetings,
             myShares: state.myShares,
-            customMeetingTypes: JSON.parse(localStorage.getItem('taskflow_customMeetingTypes') || '[]'),
+            customMeetingTypes: JSON.parse(localStorage.getItem('cnotes_customMeetingTypes') || '[]'),
             theme: localStorage.getItem('theme') || 'light'
         }
     };
@@ -12176,7 +12531,7 @@ function exportAllData() {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Mnimi_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `Cnotes_Backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -12250,7 +12605,7 @@ function performImport(importedData) {
     
     // Import custom meeting types
     if (data.customMeetingTypes) {
-        localStorage.setItem('taskflow_customMeetingTypes', JSON.stringify(data.customMeetingTypes));
+        localStorage.setItem('cnotes_customMeetingTypes', JSON.stringify(data.customMeetingTypes));
     }
     
     // Import theme
@@ -12281,12 +12636,12 @@ function performImport(importedData) {
 }
 
                 function loadData() {
-            const tasks = localStorage.getItem('taskflow_tasks');
-            const notes = localStorage.getItem('taskflow_notes');
-            const customers = localStorage.getItem('taskflow_customers');
-            const meetings = localStorage.getItem('taskflow_meetings');
-            const CustomerInfos = localStorage.getItem('taskflow_CustomerInfos');
-            const meetingTabs = localStorage.getItem('taskflow_meetingTabs');
+            const tasks = localStorage.getItem('cnotes_tasks');
+            const notes = localStorage.getItem('cnotes_notes');
+            const customers = localStorage.getItem('cnotes_customers');
+            const meetings = localStorage.getItem('cnotes_meetings');
+            const CustomerInfos = localStorage.getItem('cnotes_CustomerInfos');
+            const meetingTabs = localStorage.getItem('cnotes_meetingTabs');
             const theme = localStorage.getItem('theme');
             if (tasks) state.tasks = JSON.parse(tasks);
             if (notes) state.notes = JSON.parse(notes);
@@ -12457,7 +12812,7 @@ function openCustomMeetingTypeModal(editSlug = null) {
     selectedCustomMeetingTypeIcon = '';
     
     if (editSlug) {
-        const customTypes = JSON.parse(localStorage.getItem('taskflow_customMeetingTypes') || '[]');
+        const customTypes = JSON.parse(localStorage.getItem('cnotes_customMeetingTypes') || '[]');
         const type = customTypes.find(t => t.slug === editSlug);
         
         if (type) {
@@ -12539,7 +12894,7 @@ function handleCustomMeetingTypeSubmit(e) {
     
     const typeSlug = typeName.toLowerCase().replace(/\s+/g, '-');
     
-    let customTypes = JSON.parse(localStorage.getItem('taskflow_customMeetingTypes') || '[]');
+    let customTypes = JSON.parse(localStorage.getItem('cnotes_customMeetingTypes') || '[]');
     
     if (editingSlug) {
         // Update existing type
@@ -12601,7 +12956,7 @@ if (form) {
 showToast(`✅ "${typeName}" type added and selected!`, 'success');
     }
     
-    localStorage.setItem('taskflow_customMeetingTypes', JSON.stringify(customTypes));
+    localStorage.setItem('cnotes_customMeetingTypes', JSON.stringify(customTypes));
     closeCustomMeetingTypeModal();
 }
 
@@ -12626,16 +12981,16 @@ function removeCustomMeetingType(typeSlug, element) {
         element.remove();
         
         // Remove from localStorage
-        let customTypes = JSON.parse(localStorage.getItem('taskflow_customMeetingTypes') || '[]');
+        let customTypes = JSON.parse(localStorage.getItem('cnotes_customMeetingTypes') || '[]');
         customTypes = customTypes.filter(t => t.slug !== typeSlug);
-        localStorage.setItem('taskflow_customMeetingTypes', JSON.stringify(customTypes));
+        localStorage.setItem('cnotes_customMeetingTypes', JSON.stringify(customTypes));
         
         showToast('✅ Type removed!', 'success');
     });
 }
 
 function loadCustomMeetingTypes() {
-    const customTypes = JSON.parse(localStorage.getItem('taskflow_customMeetingTypes') || '[]');
+    const customTypes = JSON.parse(localStorage.getItem('cnotes_customMeetingTypes') || '[]');
     const container = document.getElementById('meetingTypePills');
     const addButton = container.querySelector('button[onclick="addCustomMeetingType()"]');
     
@@ -14022,7 +14377,7 @@ function setupLinkSharing(meetingId) {
     
     if (linkEnabled) {
         const linkShare = state.myShares.find(s => s.meetingId === meetingId && s.isPublicLink);
-        document.getElementById('shareLinkUrl').value = `https://salesflow.app/m/${meetingId}`;
+        document.getElementById('shareLinkUrl').value = `https://cnotes.app/m/${meetingId}`;
         document.getElementById('linkPermissionLevel').value = linkShare.permission;
         document.getElementById('linkExpiration').value = linkShare.expiration || 'never';
         document.getElementById('linkSharingOptions').style.display = 'block';
@@ -14047,7 +14402,7 @@ function toggleLinkSharing() {
         };
         
         state.myShares.push(linkShare);
-        document.getElementById('shareLinkUrl').value = `https://salesflow.app/m/${meetingId}`;
+        document.getElementById('shareLinkUrl').value = `https://cnotes.app/m/${meetingId}`;
         document.getElementById('linkSharingOptions').style.display = 'block';
         
         showToast('🔗 Link sharing enabled', 'success');
@@ -14877,4 +15232,141 @@ function undoAiImprovement(editorId, originalHTML) {
         window.addEventListener('beforeunload', saveData);
     </script>
 </body>
+<script>
+  // ── Config ────────────────────────────────────────────────────────────────
+  const STRIPE_PUBLISHABLE_KEY = 'pk_test_51SrhHpK06TvHy2wn8J1AdR6flKL7M3roxYZr8qqHRB6hNN7ebgvWN9ui9qgvo2Fx6eJBNQrXH1mmfKWGUeTF3mNP00hlEYzPqa'; // Replace with your key
+  const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+  const API_BASE = 'http://localhost:3000';
+
+  // ── Billing toggle state ──────────────────────────────────────────────────
+  let currentBilling = 'monthly'; // 'monthly' or 'annual'
+
+  // ── Grab the billing toggle (Monthly/Annual switch in the plan modal) ─────
+  // Find the toggle element — update selector to match your actual element
+  const billingToggle = document.querySelector('input[type="checkbox"]');
+  if (billingToggle) {
+    billingToggle.addEventListener('change', (e) => {
+      currentBilling = e.target.checked ? 'annual' : 'monthly';
+      updatePriceDisplay();
+    });
+  }
+
+  // ── Update displayed prices when billing period changes ───────────────────
+  function updatePriceDisplay() {
+    const prices = {
+      starter:   { monthly: '$9/mo',  annual: '$7/mo' },
+      pro:       { monthly: '$19/mo', annual: '$15/mo' },
+      unlimited: { monthly: '$29/mo', annual: '$23/mo' },
+    };
+    // Update price text in the modal if needed
+    // Adjust selectors to match your actual DOM elements
+  }
+
+  // ── Handle Upgrade button clicks ──────────────────────────────────────────
+  async function handleUpgrade(plan) {
+    // Get current user info — adjust based on how your app stores auth state
+    const userEmail = getCurrentUserEmail(); // implement based on your auth
+    const userId    = getCurrentUserId();    // implement based on your auth
+
+    if (!userEmail || !userId) {
+      // User not signed in — trigger your existing sign in modal
+      document.querySelector('[data-action="signin"]')?.click();
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan,
+          billing: currentBilling,
+          userId,
+          userEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        console.error('Checkout error:', data.error);
+        alert('Something went wrong. Please try again.');
+        return;
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+
+    } catch (err) {
+      console.error('Network error:', err);
+      alert('Network error. Please check your connection.');
+    }
+  }
+
+  // ── Handle Manage Subscription (for existing subscribers) ─────────────────
+  async function handleManageSubscription() {
+    const stripeCustomerId = getCurrentUserStripeId(); // from your database/auth state
+
+    try {
+      const response = await fetch(`${API_BASE}/create-portal-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripeCustomerId }),
+      });
+
+      const data = await response.json();
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Portal error:', err);
+    }
+  }
+
+  // ── Attach click handlers to your Upgrade buttons ─────────────────────────
+  // These selectors are based on the plan modal structure visible in your HTML.
+  // Find the three Upgrade buttons and attach handlers:
+  document.addEventListener('DOMContentLoaded', () => {
+
+    // Find all upgrade buttons in the plan modal
+    const upgradeButtons = document.querySelectorAll('.plan-upgrade-btn');
+    // If the above selector doesn't work, try: document.querySelectorAll('button')
+    // and filter by text content, e.g.:
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    const starterBtn   = allButtons.find(b => b.textContent.trim() === 'Upgrade' && b.closest('.plan-starter'));
+    const proBtn       = allButtons.find(b => b.textContent.trim() === 'Upgrade' && b.closest('.plan-pro'));
+    const unlimitedBtn = allButtons.find(b => b.textContent.trim() === 'Upgrade' && b.closest('.plan-unlimited'));
+
+    if (starterBtn)   starterBtn.addEventListener('click',   () => handleUpgrade('starter'));
+    if (proBtn)       proBtn.addEventListener('click',       () => handleUpgrade('pro'));
+    if (unlimitedBtn) unlimitedBtn.addEventListener('click', () => handleUpgrade('unlimited'));
+  });
+
+  // ── Placeholder auth helpers — replace with your actual auth logic ─────────
+  function getCurrentUserEmail() {
+    // Replace with your actual implementation, e.g.:
+    // return firebase.auth().currentUser?.email;
+    // return supabase.auth.getUser()?.email;
+    return localStorage.getItem('userEmail') || null;
+  }
+
+  function getCurrentUserId() {
+    return localStorage.getItem('userId') || null;
+  }
+
+  function getCurrentUserStripeId() {
+    return localStorage.getItem('stripeCustomerId') || null;
+  }
+
+  // ── Handle post-payment redirect ──────────────────────────────────────────
+  if (window.location.pathname === '/success') {
+    const params  = new URLSearchParams(window.location.search);
+    const session = params.get('session_id');
+    if (session) {
+      console.log('Payment successful, session:', session);
+      // TODO: Update your UI to reflect the new plan
+      // e.g. refresh user data from your backend, update customer slots shown
+    }
+  }
+</script>
+
+
 </html>
