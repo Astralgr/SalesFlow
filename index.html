@@ -15236,7 +15236,8 @@ function undoAiImprovement(editorId, originalHTML) {
   // ── Config ────────────────────────────────────────────────────────────────
   const STRIPE_PUBLISHABLE_KEY = 'pk_test_51SrhHpK06TvHy2wn8J1AdR6flKL7M3roxYZr8qqHRB6hNN7ebgvWN9ui9qgvo2Fx6eJBNQrXH1mmfKWGUeTF3mNP00hlEYzPqa'; // Replace with your key
   const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-  const API_BASE = 'http://localhost:3000';
+ const API_BASE = 'https://salesflow-production-ee77.up.railway.app';
+
 
   // ── Billing toggle state ──────────────────────────────────────────────────
   let currentBilling = 'monthly'; // 'monthly' or 'annual'
@@ -15370,5 +15371,6 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
