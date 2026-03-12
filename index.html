@@ -6523,49 +6523,162 @@ async function cancelSubscription() {
     }
 }
 
-        async function openManageSubscription() {
+async function openManageSubscription() {
     if (!auth.currentUser) {
         showToast('Please sign in first', 'error');
         return;
     }
+
+    // Close upgrade modal first
+    closeUpgradeModal();
+
+    const planName = state.subscription.plan.charAt(0).toUpperCase() + state.subscription.plan.slice(1);
 
     document.getElementById('confirmIcon').textContent = '⚠️';
     document.getElementById('confirmTitle').textContent = 'Cancel Subscription?';
     document.getElementById('confirmMessage').innerHTML = `
         <div style="text-align: left;">
             <p style="margin-bottom: 0.75rem;">
-                Your current plan: <strong>${state.subscription.plan.charAt(0).toUpperCase() + state.subscription.plan.slice(1)}</strong>
+                Your current plan: <strong>${planName}</strong>
             </p>
             <p style="margin-bottom: 0.75rem;">
-                If you cancel, you will be downgraded to the <strong>Free plan</strong> (6 customers).
+                If you cancel, your subscription will end at the current billing period 
+                and you'll be downgraded to the <strong>Free plan</strong> (6 customers).
             </p>
-            <p style="color: var(--text-secondary); font-size: 0.85rem;">
-                To cancel, please contact us at:<br>
-                <a href="mailto:support@cnotes.app" style="color: var(--primary);">support@cnotes.app</a>
+            <p style="margin-bottom: 0.75rem; color: var(--danger); font-weight: 600;">
+                Customers beyond the Free limit will become view-only.
+            </p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                This action cannot be undone. You can re-subscribe anytime.
             </p>
         </div>
     `;
 
+    // Show cancel button as "Keep Plan"
     const cancelBtn = document.getElementById('cancelConfirmBtn');
     cancelBtn.style.display = '';
-    cancelBtn.textContent = 'Keep Plan';
+    cancelBtn.textContent = 'Keep My Plan';
+    cancelBtn.className = 'btn btn-primary';
 
+    // Configure the confirm button as "Cancel Subscription"
     const confirmBtn = document.getElementById('confirmBtn');
     const newConfirmBtn = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
-    newConfirmBtn.textContent = 'OK';
-    newConfirmBtn.className = 'btn btn-primary';
-    newConfirmBtn.addEventListener('click', () => {
+    newConfirmBtn.textContent = '🗑️ Cancel Subscription';
+    newConfirmBtn.className = 'btn btn-danger';
+
+    newConfirmBtn.addEventListener('click', async () => {
         document.getElementById('confirmModal').classList.remove('active');
-        document.getElementById('cancelConfirmBtn').style.display = '';
-        document.getElementById('cancelConfirmBtn').textContent = 'Cancel';
+        await performCancellation();
     });
 
     state.confirmCallback = null;
     document.getElementById('confirmModal').classList.add('active');
 }
 
+async function performCancellation() {
+    const subscriptionId = state.subscription.stripeSubscriptionId;
+
+    if (!subscriptionId) {
+        // No Stripe subscription ID stored — just downgrade locally
+        // This handles test scenarios or edge cases
+        state.subscription.plan = 'free';
+        state.subscription.status = 'active';
+        state.subscription.stripeCustomerId = null;
+        state.subscription.stripeSubscriptionId = null;
+        saveSubscription();
+        saveUserDataToFirestore();
+        renderCustomerSlots();
+        renderCustomerFilters();
+        if (state.currentCustomer !== 'all') updateFrozenBanner();
+        showToast('✅ Subscription cancelled', 'success');
+        return;
+    }
+
+    // Show loading
+    showToast('🔄 Cancelling subscription...', 'success');
+
+    try {
+        const response = await fetch('https://web-production-fcbb6.up.railway.app/cancel-subscription-now', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                stripeSubscriptionId: subscriptionId,
+                userId: auth.currentUser.uid
+            }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            showToast('❌ Failed to cancel: ' + data.error, 'error');
+            return;
+        }
+
+        // Update local state
+        state.subscription.plan = 'free';
+        state.subscription.status = 'active';
+        state.subscription.stripeCustomerId = null;
+        state.subscription.stripeSubscriptionId = null;
+        state.subscription.cancelledAt = new Date().toISOString();
+
+        saveSubscription();
+        saveUserDataToFirestore();
+        renderCustomerSlots();
+        renderCustomerFilters();
+        if (state.currentCustomer !== 'all') updateFrozenBanner();
+
+        // Show success
+        showCancellationSuccess();
+
+    } catch (err) {
+        console.error('Cancel error:', err);
+        showToast('❌ Failed to cancel. Please try again.', 'error');
+    }
+}
+
+function showCancellationSuccess() {
+    document.getElementById('confirmIcon').textContent = '✅';
+    document.getElementById('confirmTitle').textContent = 'Subscription Cancelled';
+    document.getElementById('confirmMessage').innerHTML = `
+        <div style="text-align: center;">
+            <p style="margin-bottom: 0.75rem;">
+                Your subscription has been cancelled.
+            </p>
+            <p style="margin-bottom: 0.75rem;">
+                You are now on the <strong>Free plan</strong>.
+            </p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                You can upgrade again anytime from the plans menu.
+            </p>
+        </div>
+    `;
+
+    // Hide cancel button
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = 'none';
+
+    // Configure OK button
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.textContent = 'OK';
+    newConfirmBtn.className = 'btn btn-primary';
+
+    newConfirmBtn.addEventListener('click', () => {
+        document.getElementById('confirmModal').classList.remove('active');
+        // Reset buttons for future confirms
+        document.getElementById('cancelConfirmBtn').style.display = '';
+        document.getElementById('cancelConfirmBtn').textContent = 'Cancel';
+        document.getElementById('cancelConfirmBtn').className = 'btn btn-secondary';
+    });
+
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
+}
+        
 async function selectPlan(plan) {
     // ── Plan hierarchy (higher number = higher plan) ──
     const planRank = { free: 0, starter: 1, pro: 2, unlimited: 3 };
@@ -6712,6 +6825,10 @@ function init() {
         if (data.plan) {
           state.subscription.plan   = data.plan;
           state.subscription.status = 'active';
+
+             state.subscription.stripeCustomerId = data.stripeCustomerId || null;      
+          state.subscription.stripeSubscriptionId = data.stripeSubscriptionId || null; 
+          state.subscription.subscribedAt = new Date().toISOString();                 
 
           saveSubscription();
             saveUserDataToFirestore();
@@ -15460,6 +15577,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
