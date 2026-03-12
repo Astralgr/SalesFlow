@@ -4984,26 +4984,67 @@ auth.onAuthStateChanged(async (user) => {
     if (user) {
         await loadUserDataFromFirestore(user.uid);
         await loadSharingData();
+        
+        // ✅ Stripe verification runs AFTER Firestore data is loaded
+        // This prevents Firestore from overwriting the newly verified plan
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session_id');
+        
+        if (sessionId) {
+            try {
+                const response = await fetch(
+                    'https://web-production-fcbb6.up.railway.app/verify-session?session_id=' + sessionId
+                );
+                const data = await response.json();
+                
+                if (data.plan) {
+                    state.subscription.plan = data.plan;
+                    state.subscription.status = 'active';
+                    state.subscription.billing = data.billing || 'monthly';
+                    state.subscription.stripeCustomerId = data.stripeCustomerId || null;
+                    state.subscription.stripeSubscriptionId = data.stripeSubscriptionId || null;
+                    state.subscription.periodEnd = data.periodEnd || null;
+                    state.subscription.cancelAt = null;
+                    state.subscription.subscribedAt = new Date().toISOString();
+                    
+                    // ✅ Save BEFORE render so UI shows correct plan
+                    await saveSubscription();
+                    await saveUserDataToFirestore();
+                    
+                    window.history.replaceState({}, '', window.location.pathname);
+                    
+                    showToast(
+                        'Welcome to the ' + 
+                        data.plan.charAt(0).toUpperCase() + 
+                        data.plan.slice(1) + 
+                        ' plan! 🎉', 
+                        'success'
+                    );
+                }
+            } catch (err) {
+                console.error('Stripe verification error:', err);
+                showToast('Could not verify payment. Please contact support.', 'error');
+            }
+        }
+        
     } else {
         loadData();
         state.sharedMeetings = [];
         state.myShares = [];
     }
 
-     checkSubscriptionExpiry(); 
-    // Reset state to dashboard view
+    checkSubscriptionExpiry(); 
     state.currentCustomer = 'all';
     state.currentMeetingTab = 'all';
     
-    // Render all components
     render();
     renderCustomerFilters();
     updateStats();
     updateShareNotificationBadge();
     
-    // Always show dashboard on initial load/refresh
     showDashboard();
 });
+
 
 
 function confirmDeleteAccount() {
@@ -6881,15 +6922,19 @@ function showLimitReachedModal() {
 function saveSubscription() { 
     localStorage.setItem('cnotes_subscription', JSON.stringify(state.subscription));
     
-    // Also save to Firestore if signed in
     if (auth.currentUser) {
-        db.collection('users').doc(auth.currentUser.uid).set({
+        // ✅ Return the promise so it can be awaited
+        return db.collection('users').doc(auth.currentUser.uid).set({
             subscription: state.subscription
         }, { merge: true }).catch(err => {
             console.error('Error saving subscription:', err);
         });
     }
+    
+    // ✅ Return resolved promise when no user
+    return Promise.resolve();
 }
+
 
         
 function loadSubscription() { const s = localStorage.getItem('cnotes_subscription'); if (s) state.subscription = JSON.parse(s); }
@@ -6955,40 +7000,7 @@ function init() {
     }
   }, 30000);
 
-  // ── ADD THIS BLOCK — Stripe payment return handler ──────────────────────
- const params    = new URLSearchParams(window.location.search);
-const sessionId = params.get('session_id');
-
-if (sessionId) {
-    fetch('https://web-production-fcbb6.up.railway.app/verify-session?session_id=' + sessionId)
-      .then(r => r.json())
-      .then(data => {
-        if (data.plan) {
-          state.subscription.plan = data.plan;
-          state.subscription.status = 'active';
-          state.subscription.billing = data.billing || 'monthly';
-          state.subscription.stripeCustomerId = data.stripeCustomerId || null;
-          state.subscription.stripeSubscriptionId = data.stripeSubscriptionId || null;
-          state.subscription.periodEnd = data.periodEnd || null;
-          state.subscription.cancelAt = null;  // Not cancelled
-          state.subscription.subscribedAt = new Date().toISOString();
-          
-          saveSubscription();
-          saveUserDataToFirestore();
-          
-          renderCustomerSlots();
-          renderCustomerFilters();
-          if (state.currentCustomer !== 'all') updateFrozenBanner();
-          showToast('Welcome to the ' + data.plan.charAt(0).toUpperCase() + data.plan.slice(1) + ' plan! 🎉', 'success');
-          window.history.replaceState({}, '', window.location.pathname);
-        }
-      })
-      .catch(err => {
-        console.error('Stripe verification error:', err);
-        showToast('Could not verify payment. Please contact support.', 'error');
-      });
-}
-  // ── END OF STRIPE BLOCK ─────────────────────────────────────────────────
+  
 
 }
 
@@ -15720,6 +15732,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
