@@ -5235,6 +5235,10 @@ async function loadUserDataFromFirestore(uid) {
             ];
             state.sharedMeetings = data.sharedMeetings || [];
             state.myShares = data.myShares || [];
+             if (data.subscription) {
+                state.subscription = data.subscription;
+                saveSubscription(); // Also save to localStorage as backup
+            }
         }
     } catch (error) {
         console.error('Error loading data:', error);
@@ -5255,6 +5259,7 @@ async function saveUserDataToFirestore() {
             meetingTabs: state.meetingTabs,
             sharedMeetings: state.sharedMeetings,
             myShares: state.myShares,
+             subscription: state.subscription, 
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     } catch (error) {
@@ -6644,13 +6649,26 @@ function showLimitReachedModal() {
     document.getElementById('confirmModal').classList.add('active');
 }
 
-function saveSubscription() { localStorage.setItem('cnotes_subscription', JSON.stringify(state.subscription)); }
+function saveSubscription() { 
+    localStorage.setItem('cnotes_subscription', JSON.stringify(state.subscription));
+    
+    // Also save to Firestore if signed in
+    if (auth.currentUser) {
+        db.collection('users').doc(auth.currentUser.uid).set({
+            subscription: state.subscription
+        }, { merge: true }).catch(err => {
+            console.error('Error saving subscription:', err);
+        });
+    }
+}
+
+        
 function loadSubscription() { const s = localStorage.getItem('cnotes_subscription'); if (s) state.subscription = JSON.parse(s); }
 // ========== MONETIZATION FUNCTIONS - END ==========
 
 
 function init() {
-
+ loadSubscription();
   fixDuplicateMeetingIds();
   setupShareModalTabs();
   setupSectionResize();
@@ -6694,7 +6712,9 @@ function init() {
         if (data.plan) {
           state.subscription.plan   = data.plan;
           state.subscription.status = 'active';
+
           saveSubscription();
+            saveUserDataToFirestore();
           renderCustomerSlots();
           renderCustomerFilters();
           if (state.currentCustomer !== 'all') updateFrozenBanner();
@@ -15440,6 +15460,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
