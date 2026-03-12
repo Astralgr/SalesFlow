@@ -6514,7 +6514,7 @@ async function selectPlan(plan) {
   showToast('Redirecting to checkout...', 'success');
 
   try {
-    const response = await fetch('https://salesflow-production-ee77.up.railway.app/create-checkout-session', {
+    const response = await fetch('https://web-production-fcbb6.up.railway.app/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan, billing, userId, userEmail }),
@@ -6619,7 +6619,7 @@ function init() {
   const sessionId = params.get('session_id');
 
   if (sessionId) {
-    fetch('https://salesflow-production-ee77.up.railway.app/verify-session?session_id=' + sessionId)
+    fetch('https://web-production-fcbb6.up.railway.app/verify-session?session_id=' + sessionId)
       .then(r => r.json())
       .then(data => {
         if (data.plan) {
@@ -15236,7 +15236,7 @@ function undoAiImprovement(editorId, originalHTML) {
   // ── Config ────────────────────────────────────────────────────────────────
   const STRIPE_PUBLISHABLE_KEY = 'pk_test_51SrhHpK06TvHy2wn8J1AdR6flKL7M3roxYZr8qqHRB6hNN7ebgvWN9ui9qgvo2Fx6eJBNQrXH1mmfKWGUeTF3mNP00hlEYzPqa'; // Replace with your key
   const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
- const API_BASE = 'https://salesflow-production-ee77.up.railway.app';
+ const API_BASE = 'https://web-production-fcbb6.up.railway.app';
 
 
   // ── Billing toggle state ──────────────────────────────────────────────────
@@ -15276,7 +15276,7 @@ function undoAiImprovement(editorId, originalHTML) {
     }
 
     try {
-      const response = await fetch('https://salesflow-production-ee77.up.railway.app/create-checkout-session', {
+      const response = await fetch('https://web-production-fcbb6.up.railway.app/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -15371,6 +15371,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
