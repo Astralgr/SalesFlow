@@ -4989,7 +4989,8 @@ auth.onAuthStateChanged(async (user) => {
         state.sharedMeetings = [];
         state.myShares = [];
     }
-    
+
+     checkSubscriptionExpiry(); 
     // Reset state to dashboard view
     state.currentCustomer = 'all';
     state.currentMeetingTab = 'all';
@@ -6430,18 +6431,31 @@ function renderCustomerSlots() {
     const limit = getCustomerLimit();
     container.style.display = 'block';
     const used = state.customers.length;
+
     if (limit === Infinity) {
         fill.style.width = '100%';
         fill.className = 'customer-slots-fill normal';
         count.textContent = used + ' customers (Unlimited)';
-        return;
+    } else {
+        const pct = Math.min((used / limit) * 100, 100);
+        fill.style.width = pct + '%';
+        fill.className = 'customer-slots-fill ' + (used >= limit ? 'limit' : used >= limit - 1 ? 'warning' : 'normal');
+        count.textContent = used + ' of ' + limit;
     }
-    const pct = Math.min((used / limit) * 100, 100);
-    fill.style.width = pct + '%';
-    fill.className = 'customer-slots-fill ' + (used >= limit ? 'limit' : used >= limit - 1 ? 'warning' : 'normal');
-    count.textContent = used + ' of ' + limit;
-}
 
+    // Show cancellation warning
+    if (state.subscription.cancelAt) {
+        const cancelDate = new Date(state.subscription.cancelAt);
+        const formattedDate = cancelDate.toLocaleDateString('en-US', { 
+            month: 'short', day: 'numeric' 
+        });
+        const daysLeft = Math.ceil((cancelDate - new Date()) / (1000 * 60 * 60 * 24));
+        
+        count.innerHTML = count.textContent + 
+            ` <span style="color: var(--warning); font-weight: 700;">• Ends ${formattedDate} (${daysLeft}d)</span>`;
+    }
+}
+        
 function openUpgradeModal() { document.getElementById('upgradeModal').classList.add('active'); updatePlanCards(); }
 function closeUpgradeModal() { document.getElementById('upgradeModal').classList.remove('active'); }
 
@@ -6529,38 +6543,88 @@ async function openManageSubscription() {
         return;
     }
 
-    // Close upgrade modal first
     closeUpgradeModal();
 
     const planName = state.subscription.plan.charAt(0).toUpperCase() + state.subscription.plan.slice(1);
+    const billing = state.subscription.billing || 'monthly';
+    const billingLabel = billing === 'annual' ? 'year' : 'month';
 
+    // Check if already set to cancel
+    if (state.subscription.cancelAt) {
+        const cancelDate = new Date(state.subscription.cancelAt);
+        const formattedDate = cancelDate.toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'long', day: 'numeric' 
+        });
+
+        document.getElementById('confirmIcon').textContent = 'ℹ️';
+        document.getElementById('confirmTitle').textContent = 'Subscription Ending';
+        document.getElementById('confirmMessage').innerHTML = `
+            <div style="text-align: left;">
+                <p style="margin-bottom: 0.75rem;">
+                    Your <strong>${planName}</strong> plan is set to cancel.
+                </p>
+                <p style="margin-bottom: 0.75rem;">
+                    You have full access until: <br>
+                    <strong style="font-size: 1.1rem; color: var(--primary);">${formattedDate}</strong>
+                </p>
+                <p style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.85rem;">
+                    After this date you'll be moved to the Free plan (6 customers).
+                </p>
+                <p style="font-size: 0.85rem; color: var(--success);">
+                    Changed your mind? You can reactivate below.
+                </p>
+            </div>
+        `;
+
+        const cancelBtn = document.getElementById('cancelConfirmBtn');
+        cancelBtn.style.display = '';
+        cancelBtn.textContent = 'Close';
+        cancelBtn.className = 'btn btn-secondary';
+
+        const confirmBtn = document.getElementById('confirmBtn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.textContent = '🔄 Reactivate Plan';
+        newConfirmBtn.className = 'btn btn-primary';
+
+        newConfirmBtn.addEventListener('click', async () => {
+            document.getElementById('confirmModal').classList.remove('active');
+            await reactivateSubscription();
+        });
+
+        state.confirmCallback = null;
+        document.getElementById('confirmModal').classList.add('active');
+        return;
+    }
+
+    // Normal cancel flow
     document.getElementById('confirmIcon').textContent = '⚠️';
     document.getElementById('confirmTitle').textContent = 'Cancel Subscription?';
     document.getElementById('confirmMessage').innerHTML = `
         <div style="text-align: left;">
             <p style="margin-bottom: 0.75rem;">
-                Your current plan: <strong>${planName}</strong>
+                Your current plan: <strong>${planName}</strong> (${billingLabel}ly)
             </p>
             <p style="margin-bottom: 0.75rem;">
-                If you cancel, your subscription will end at the current billing period 
-                and you'll be downgraded to the <strong>Free plan</strong> (6 customers).
+                If you cancel:
             </p>
-            <p style="margin-bottom: 0.75rem; color: var(--danger); font-weight: 600;">
-                Customers beyond the Free limit will become view-only.
-            </p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+                <li>You <strong>keep full access</strong> until the end of your current billing ${billingLabel}</li>
+                <li>After that, you'll be moved to the <strong>Free plan</strong> (6 customers)</li>
+                <li>Customers beyond the limit will become view-only</li>
+            </ul>
             <p style="font-size: 0.85rem; color: var(--text-secondary);">
-                This action cannot be undone. You can re-subscribe anytime.
+                You can reactivate anytime before the period ends.
             </p>
         </div>
     `;
 
-    // Show cancel button as "Keep Plan"
     const cancelBtn = document.getElementById('cancelConfirmBtn');
     cancelBtn.style.display = '';
     cancelBtn.textContent = 'Keep My Plan';
     cancelBtn.className = 'btn btn-primary';
 
-    // Configure the confirm button as "Cancel Subscription"
     const confirmBtn = document.getElementById('confirmBtn');
     const newConfirmBtn = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
@@ -6577,6 +6641,154 @@ async function openManageSubscription() {
     document.getElementById('confirmModal').classList.add('active');
 }
 
+async function performCancellation() {
+    const subscriptionId = state.subscription.stripeSubscriptionId;
+
+    if (!subscriptionId) {
+        state.subscription.plan = 'free';
+        state.subscription.status = 'active';
+        state.subscription.cancelAt = null;
+        saveSubscription();
+        saveUserDataToFirestore();
+        renderCustomerSlots();
+        renderCustomerFilters();
+        showCancellationSuccess(null);
+        return;
+    }
+
+    showToast('🔄 Cancelling subscription...', 'success');
+
+    try {
+        const response = await fetch('https://web-production-fcbb6.up.railway.app/cancel-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                stripeSubscriptionId: subscriptionId,
+                userId: auth.currentUser.uid
+            }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            showToast('❌ Failed to cancel: ' + data.error, 'error');
+            return;
+        }
+
+        // Keep the plan active but mark as cancelling
+        state.subscription.status = 'cancelling';
+        state.subscription.cancelAt = data.cancelAt;
+
+        saveSubscription();
+        saveUserDataToFirestore();
+        renderCustomerSlots();
+        renderCustomerFilters();
+
+        showCancellationSuccess(data.cancelAt);
+
+    } catch (err) {
+        console.error('Cancel error:', err);
+        showToast('❌ Failed to cancel. Please try again.', 'error');
+    }
+}
+
+function showCancellationSuccess(cancelAt) {
+    const formattedDate = cancelAt 
+        ? new Date(cancelAt).toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'long', day: 'numeric' 
+          })
+        : 'now';
+
+    document.getElementById('confirmIcon').textContent = '✅';
+    document.getElementById('confirmTitle').textContent = 'Subscription Cancelled';
+    document.getElementById('confirmMessage').innerHTML = `
+        <div style="text-align: center;">
+            ${cancelAt ? `
+                <p style="margin-bottom: 0.75rem;">
+                    Your subscription has been cancelled.
+                </p>
+                <p style="margin-bottom: 0.75rem;">
+                    You have <strong>full access</strong> until:
+                </p>
+                <p style="font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-bottom: 0.75rem;">
+                    ${formattedDate}
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    After this date you'll be on the Free plan.<br>
+                    You can reactivate anytime before then.
+                </p>
+            ` : `
+                <p style="margin-bottom: 0.75rem;">
+                    Your subscription has been cancelled.
+                </p>
+                <p>You are now on the <strong>Free plan</strong>.</p>
+            `}
+        </div>
+    `;
+
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = 'none';
+
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.textContent = 'OK';
+    newConfirmBtn.className = 'btn btn-primary';
+    newConfirmBtn.addEventListener('click', () => {
+        document.getElementById('confirmModal').classList.remove('active');
+        document.getElementById('cancelConfirmBtn').style.display = '';
+        document.getElementById('cancelConfirmBtn').textContent = 'Cancel';
+        document.getElementById('cancelConfirmBtn').className = 'btn btn-secondary';
+    });
+
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+async function reactivateSubscription() {
+    const subscriptionId = state.subscription.stripeSubscriptionId;
+
+    if (!subscriptionId) {
+        showToast('⚠️ No subscription to reactivate', 'error');
+        return;
+    }
+
+    showToast('🔄 Reactivating...', 'success');
+
+    try {
+        const response = await fetch('https://web-production-fcbb6.up.railway.app/reactivate-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                stripeSubscriptionId: subscriptionId
+            }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            showToast('❌ Failed: ' + data.error, 'error');
+            return;
+        }
+
+        // Remove cancellation
+        state.subscription.status = 'active';
+        state.subscription.cancelAt = null;
+
+        saveSubscription();
+        saveUserDataToFirestore();
+        renderCustomerSlots();
+        renderCustomerFilters();
+
+        showToast('✅ Subscription reactivated! You\'re staying on ' + state.subscription.plan.charAt(0).toUpperCase() + state.subscription.plan.slice(1), 'success');
+
+    } catch (err) {
+        console.error('Reactivate error:', err);
+        showToast('❌ Failed to reactivate', 'error');
+    }
+}
+        
 async function performCancellation() {
     const subscriptionId = state.subscription.stripeSubscriptionId;
 
@@ -6779,9 +6991,34 @@ function saveSubscription() {
 function loadSubscription() { const s = localStorage.getItem('cnotes_subscription'); if (s) state.subscription = JSON.parse(s); }
 // ========== MONETIZATION FUNCTIONS - END ==========
 
-
+function checkSubscriptionExpiry() {
+    // If subscription is set to cancel and the date has passed, downgrade
+    if (state.subscription.cancelAt) {
+        const cancelDate = new Date(state.subscription.cancelAt);
+        const now = new Date();
+        
+        if (now >= cancelDate) {
+            // Period has ended — downgrade to free
+            state.subscription.plan = 'free';
+            state.subscription.status = 'active';
+            state.subscription.stripeCustomerId = null;
+            state.subscription.stripeSubscriptionId = null;
+            state.subscription.cancelAt = null;
+            state.subscription.periodEnd = null;
+            
+            saveSubscription();
+            saveUserDataToFirestore();
+            renderCustomerSlots();
+            renderCustomerFilters();
+            
+            showToast('Your subscription has ended. You are now on the Free plan.', 'success');
+        }
+    }
+}
+        
 function init() {
  loadSubscription();
+     checkSubscriptionExpiry();
   fixDuplicateMeetingIds();
   setupShareModalTabs();
   setupSectionResize();
@@ -6815,28 +7052,30 @@ function init() {
   }, 30000);
 
   // ── ADD THIS BLOCK — Stripe payment return handler ──────────────────────
-  const params    = new URLSearchParams(window.location.search);
-  const sessionId = params.get('session_id');
+ const params    = new URLSearchParams(window.location.search);
+const sessionId = params.get('session_id');
 
-  if (sessionId) {
+if (sessionId) {
     fetch('https://web-production-fcbb6.up.railway.app/verify-session?session_id=' + sessionId)
       .then(r => r.json())
       .then(data => {
         if (data.plan) {
-          state.subscription.plan   = data.plan;
+          state.subscription.plan = data.plan;
           state.subscription.status = 'active';
-
-             state.subscription.stripeCustomerId = data.stripeCustomerId || null;      
-          state.subscription.stripeSubscriptionId = data.stripeSubscriptionId || null; 
-          state.subscription.subscribedAt = new Date().toISOString();                 
-
+          state.subscription.billing = data.billing || 'monthly';
+          state.subscription.stripeCustomerId = data.stripeCustomerId || null;
+          state.subscription.stripeSubscriptionId = data.stripeSubscriptionId || null;
+          state.subscription.periodEnd = data.periodEnd || null;
+          state.subscription.cancelAt = null;  // Not cancelled
+          state.subscription.subscribedAt = new Date().toISOString();
+          
           saveSubscription();
-            saveUserDataToFirestore();
+          saveUserDataToFirestore();
+          
           renderCustomerSlots();
           renderCustomerFilters();
           if (state.currentCustomer !== 'all') updateFrozenBanner();
           showToast('Welcome to the ' + data.plan.charAt(0).toUpperCase() + data.plan.slice(1) + ' plan! 🎉', 'success');
-          // Clean URL so refreshing doesn't re-trigger this
           window.history.replaceState({}, '', window.location.pathname);
         }
       })
@@ -6844,7 +7083,7 @@ function init() {
         console.error('Stripe verification error:', err);
         showToast('Could not verify payment. Please contact support.', 'error');
       });
-  }
+}
   // ── END OF STRIPE BLOCK ─────────────────────────────────────────────────
 
 }
@@ -15577,6 +15816,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
