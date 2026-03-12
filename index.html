@@ -6441,34 +6441,70 @@ function openUpgradeModal() { document.getElementById('upgradeModal').classList.
 function closeUpgradeModal() { document.getElementById('upgradeModal').classList.remove('active'); }
 
 function updatePlanCards() {
+    const planRank = { free: 0, starter: 1, pro: 2, unlimited: 3 };
+    const currentRank = planRank[state.subscription.plan] || 0;
+
     document.querySelectorAll('.plan-card').forEach(card => {
         const plan = card.dataset.plan;
         const btn = card.querySelector('.plan-btn');
+        const selectedRank = planRank[plan] || 0;
+
         card.classList.remove('current');
+
         if (plan === state.subscription.plan) {
+            // ── Current plan ──
             card.classList.add('current');
             btn.className = 'plan-btn secondary';
             btn.textContent = 'Current Plan';
             btn.onclick = null;
+            btn.style.cursor = 'default';
+            btn.style.opacity = '0.7';
+
+        } else if (selectedRank < currentRank) {
+            // ── Lower plan — block downgrade ──
+            btn.className = 'plan-btn secondary';
+            btn.textContent = '—';
+            btn.onclick = null;
+            btn.style.cursor = 'default';
+            btn.style.opacity = '0.4';
+
         } else {
+            // ── Higher plan — allow upgrade ──
             btn.className = 'plan-btn primary';
             btn.textContent = 'Upgrade';
+            btn.style.cursor = 'pointer';
+            btn.style.opacity = '1';
             btn.onclick = () => selectPlan(plan);
         }
     });
-    
-    // Show/hide cancel button for paid users
-    let cancelDiv = document.getElementById('cancelSubscriptionDiv');
+
+    // ── Show cancel button for paid users ──
+    let manageDiv = document.getElementById('manageSubscriptionDiv');
+
     if (state.subscription.plan !== 'free') {
-        if (!cancelDiv) {
-            cancelDiv = document.createElement('div');
-            cancelDiv.id = 'cancelSubscriptionDiv';
-            cancelDiv.style.cssText = 'text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
-            cancelDiv.innerHTML = '<button onclick="cancelSubscription()" style="background:transparent;border:none;color:var(--text-secondary);cursor:pointer;font-size:0.8rem;text-decoration:underline">Cancel Subscription</button>';
-            document.querySelector('.upgrade-modal-content').appendChild(cancelDiv);
+        if (!manageDiv) {
+            manageDiv = document.createElement('div');
+            manageDiv.id = 'manageSubscriptionDiv';
+            manageDiv.style.cssText = 'text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+            manageDiv.innerHTML = `
+                <button onclick="openManageSubscription()" style="
+                    background: transparent;
+                    border: 1px solid var(--danger);
+                    color: var(--danger);
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    padding: 0.5rem 1rem;
+                    border-radius: 8px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='var(--danger)';this.style.color='white'" 
+                   onmouseout="this.style.background='transparent';this.style.color='var(--danger)'">
+                    Cancel Subscription
+                </button>
+            `;
+            document.querySelector('.upgrade-modal-content').appendChild(manageDiv);
         }
-    } else if (cancelDiv) {
-        cancelDiv.remove();
+    } else if (manageDiv) {
+        manageDiv.remove();
     }
 }
 
@@ -6482,63 +6518,96 @@ async function cancelSubscription() {
     }
 }
 
-async function selectPlan(plan) {
-  // Free plan doesn't need Stripe
-  if (plan === 'free') {
-    state.subscription.plan = 'free';
-    state.subscription.status = 'active';
-    saveSubscription();
-    closeUpgradeModal();
-    renderCustomerSlots();
-    renderCustomerFilters();
-    if (state.currentCustomer !== 'all') updateFrozenBanner();
-    showToast('Downgraded to Free plan', 'success');
-    return;
-  }
-
-  // Get billing period from your toggle state
-  const billing = document.querySelector('.billing-toggle')?.checked ? 'annual' : 'monthly';
-  // If the above doesn't work, use this fallback:
-  // const billing = 'monthly';
-
-  // Get current user info
-  const userEmail = state.user?.email || firebase?.auth()?.currentUser?.email || localStorage.getItem('userEmail');
-  const userId    = state.user?.id    || firebase?.auth()?.currentUser?.uid  || localStorage.getItem('userId');
-
-  if (!userEmail || !userId) {
-    showToast('Please sign in first', 'error');
-    openSignInModal(); // replace with whatever your sign-in function is called
-    return;
-  }
-
-  showToast('Redirecting to checkout...', 'success');
-
-  try {
-    const response = await fetch('https://web-production-fcbb6.up.railway.app/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan, billing, userId, userEmail }),
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      showToast('Checkout error: ' + data.error, 'error');
-      return;
+        async function openManageSubscription() {
+    if (!auth.currentUser) {
+        showToast('Please sign in first', 'error');
+        return;
     }
 
-    // Redirect to Stripe hosted checkout page
-    window.location.href = data.url;
+    document.getElementById('confirmIcon').textContent = '⚠️';
+    document.getElementById('confirmTitle').textContent = 'Cancel Subscription?';
+    document.getElementById('confirmMessage').innerHTML = `
+        <div style="text-align: left;">
+            <p style="margin-bottom: 0.75rem;">
+                Your current plan: <strong>${state.subscription.plan.charAt(0).toUpperCase() + state.subscription.plan.slice(1)}</strong>
+            </p>
+            <p style="margin-bottom: 0.75rem;">
+                If you cancel, you will be downgraded to the <strong>Free plan</strong> (6 customers).
+            </p>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">
+                To cancel, please contact us at:<br>
+                <a href="mailto:support@cnotes.app" style="color: var(--primary);">support@cnotes.app</a>
+            </p>
+        </div>
+    `;
 
-  } catch (err) {
-    console.error('Stripe error:', err);
-    showToast('Could not connect to payment server. Is server.js running?', 'error');
-  }
+    const cancelBtn = document.getElementById('cancelConfirmBtn');
+    cancelBtn.style.display = '';
+    cancelBtn.textContent = 'Keep Plan';
+
+    const confirmBtn = document.getElementById('confirmBtn');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.textContent = 'OK';
+    newConfirmBtn.className = 'btn btn-primary';
+    newConfirmBtn.addEventListener('click', () => {
+        document.getElementById('confirmModal').classList.remove('active');
+        document.getElementById('cancelConfirmBtn').style.display = '';
+        document.getElementById('cancelConfirmBtn').textContent = 'Cancel';
+    });
+
+    state.confirmCallback = null;
+    document.getElementById('confirmModal').classList.add('active');
 }
 
+async function selectPlan(plan) {
+    // ── Plan hierarchy (higher number = higher plan) ──
+    const planRank = { free: 0, starter: 1, pro: 2, unlimited: 3 };
 
-let currentBilling = 'monthly';
-const planPrices = { free: 0, starter: 9, pro: 19, unlimited: 29 };
+    const currentRank = planRank[state.subscription.plan] || 0;
+    const selectedRank = planRank[plan] || 0;
+
+    // ── Block downgrade (including to free) ──
+    if (selectedRank <= currentRank) {
+        openManageSubscription();
+        return;
+    }
+
+    // ── Only upgrades reach here ──
+    const billing = currentBilling || 'monthly';
+    const userEmail = auth.currentUser?.email;
+    const userId = auth.currentUser?.uid;
+
+    if (!userEmail || !userId) {
+        showToast('Please sign in first', 'error');
+        openAuthModal();
+        return;
+    }
+
+    showToast('Redirecting to checkout...', 'success');
+
+    try {
+        const response = await fetch('https://web-production-fcbb6.up.railway.app/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan, billing, userId, userEmail }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            showToast('Checkout error: ' + data.error, 'error');
+            return;
+        }
+
+        window.location.href = data.url;
+
+    } catch (err) {
+        console.error('Stripe error:', err);
+        showToast('Could not connect to payment server.', 'error');
+    }
+}
 
 function setBilling(type) {
     currentBilling = type;
@@ -15371,6 +15440,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
