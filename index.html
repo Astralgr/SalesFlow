@@ -6514,7 +6514,7 @@ async function selectPlan(plan) {
   showToast('Redirecting to checkout...', 'success');
 
   try {
-    const response = await fetch('http://localhost:3000/create-checkout-session', {
+    const response = await fetch('https://salesflow-production-ee77.up.railway.app/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan, billing, userId, userEmail }),
@@ -15370,4 +15370,5 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
