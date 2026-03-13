@@ -3188,102 +3188,64 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
             </div>
 
 
-          <!-- Background & Context -->
-<div class="form-section">
-    <div class="form-section-header" onclick="toggleSection(this)">
-        <div class="form-section-icon">📚</div>
-        <div class="form-section-title">
-            <input type="text" 
-                   id="CustomerInfoTitle1" 
-                   value="Background & Context" 
-                   onclick="event.stopPropagation()"
-                   class="form-input" 
-                   style="font-weight: 600; font-size: 0.95rem; padding: 0.2rem 0.5rem; height: auto; background: transparent; border: 1px dashed transparent;"
-                   onfocus="this.style.borderColor='var(--primary)'; this.style.background='var(--bg-secondary)'"
-                   onblur="this.style.borderColor='transparent'; this.style.background='transparent'"
-                   placeholder="Section title...">
-        </div>
-        <div class="form-section-toggle">▼</div>
-    </div>
-    <div class="form-section-content">
-        <textarea class="form-textarea" id="CustomerInfoBackground" 
-                  placeholder="Company background, previous interactions, relevant context..."
-                  style="min-height: 100px;"></textarea>
-    </div>
-</div>
+            <!-- Background & Context -->
+            <div class="form-section">
+                <div class="form-section-header" onclick="toggleSection(this)">
+                    <div class="form-section-icon">📚</div>
+                    <div class="form-section-title">Background & Context</div>
+                    <div class="form-section-toggle">▼</div>
+                </div>
+                <div class="form-section-content">
+                    <textarea class="form-textarea" id="CustomerInfoBackground" 
+                              placeholder="Company background, previous interactions, relevant context..."
+                              style="min-height: 100px;"></textarea>
+                </div>
+            </div>
 
-<!-- Discussion Points -->
-<div class="form-section">
-    <div class="form-section-header" onclick="toggleSection(this)">
-        <div class="form-section-icon">💬</div>
-        <div class="form-section-title">
-            <input type="text" 
-                   id="CustomerInfoTitle2" 
-                   value="Discussion Points" 
-                   onclick="event.stopPropagation()"
-                   class="form-input" 
-                   style="font-weight: 600; font-size: 0.95rem; padding: 0.2rem 0.5rem; height: auto; background: transparent; border: 1px dashed transparent;"
-                   onfocus="this.style.borderColor='var(--primary)'; this.style.background='var(--bg-secondary)'"
-                   onblur="this.style.borderColor='transparent'; this.style.background='transparent'"
-                   placeholder="Section title...">
-        </div>
-        <div class="form-section-toggle">▼</div>
-    </div>
-    <div class="form-section-content">
-        <textarea class="form-textarea" id="CustomerInfoDiscussionPoints" 
-                  placeholder="Key topics to cover...&#10;&#10;• Topic 1&#10;• Topic 2&#10;• Topic 3"
-                  style="min-height: 100px;"></textarea>
-    </div>
-</div>
+            <!-- Discussion Points -->
+            <div class="form-section">
+                <div class="form-section-header" onclick="toggleSection(this)">
+                    <div class="form-section-icon">💬</div>
+                    <div class="form-section-title">Discussion Points</div>
+                    <div class="form-section-toggle">▼</div>
+                </div>
+                <div class="form-section-content">
+                    <textarea class="form-textarea" id="CustomerInfoDiscussionPoints" 
+                              placeholder="Key topics to cover...&#10;&#10;• Topic 1&#10;• Topic 2&#10;• Topic 3"
+                              style="min-height: 100px;"></textarea>
+                </div>
+            </div>
 
-<!-- Competitive Intelligence -->
-<div class="form-section">
-    <div class="form-section-header" onclick="toggleSection(this)">
-        <div class="form-section-icon">📦</div>
-        <div class="form-section-title">
-            <input type="text" 
-                   id="CustomerInfoTitle3" 
-                   value="Competitive Intelligence" 
-                   onclick="event.stopPropagation()"
-                   class="form-input" 
-                   style="font-weight: 600; font-size: 0.95rem; padding: 0.2rem 0.5rem; height: auto; background: transparent; border: 1px dashed transparent;"
-                   onfocus="this.style.borderColor='var(--primary)'; this.style.background='var(--bg-secondary)'"
-                   onblur="this.style.borderColor='transparent'; this.style.background='transparent'"
-                   placeholder="Section title...">
-        </div>
-        <div class="form-section-toggle">▼</div>
-    </div>
-    <div class="form-section-content">
-        <textarea class="form-textarea" id="CustomerInfoMaterials" 
-                  placeholder="Key topics to cover...&#10;&#10;• Competitors they're evaluating 1&#10;• Why they're considering switching&#10;• Previous vendors"
-                  style="min-height: 80px;"></textarea>
-    </div>
-</div>
 
-<!-- Expected Outcomes -->
-<div class="form-section">
-    <div class="form-section-header" onclick="toggleSection(this)">
-        <div class="form-section-icon">✅</div>
-        <div class="form-section-title">
-            <input type="text" 
-                   id="CustomerInfoTitle4" 
-                   value="Expected Outcomes" 
-                   onclick="event.stopPropagation()"
-                   class="form-input" 
-                   style="font-weight: 600; font-size: 0.95rem; padding: 0.2rem 0.5rem; height: auto; background: transparent; border: 1px dashed transparent;"
-                   onfocus="this.style.borderColor='var(--primary)'; this.style.background='var(--bg-secondary)'"
-                   onblur="this.style.borderColor='transparent'; this.style.background='transparent'"
-                   placeholder="Section title...">
-        </div>
-        <div class="form-section-toggle">▼</div>
-    </div>
-    <div class="form-section-content">
-        <textarea class="form-textarea" id="CustomerInfoOutcomes" 
-                  placeholder="What success looks like after this meeting..."
-                  style="min-height: 80px;"></textarea>
-    </div>
-</div>
 
+            <!-- Materials Needed -->
+            <div class="form-section">
+                <div class="form-section-header" onclick="toggleSection(this)">
+                    <div class="form-section-icon">📦</div>
+                    <div class="form-section-title">Competitive Intelligence</div>
+                    <div class="form-section-toggle">▼</div>
+                </div>
+                <div class="form-section-content">
+                    <textarea class="form-textarea" id="CustomerInfoMaterials" 
+                              placeholder="Key topics to cover...&#10;&#10;• Competitors they're evaluating 1&#10;• Why they're considering switching&#10;• Previous vendors"
+                              style="min-height: 80px;"></textarea>
+                </div>
+            </div>
+
+            <!-- Expected Outcomes -->
+            <div class="form-section">
+                <div class="form-section-header" onclick="toggleSection(this)">
+                    <div class="form-section-icon">✅</div>
+                    <div class="form-section-title">Expected Outcomes</div>
+                    <div class="form-section-toggle">▼</div>
+                </div>
+                <div class="form-section-content">
+                    <textarea class="form-textarea" id="CustomerInfoOutcomes" 
+                              placeholder="What success looks like after this meeting..."
+                              style="min-height: 80px;"></textarea>
+                </div>
+            </div>
+        </div>
 
         <div class="tab-content" data-tab-content="export">
             <div class="export-content">
@@ -7734,15 +7696,15 @@ function toggleMeetingParticipants(meetingId, buttonElement) {
             });
         }
 
-      function openInlineCustomerInfoForm(CustomerInfo = null) {
+       function openInlineCustomerInfoForm(CustomerInfo = null) {
     // Hide other sections
     document.getElementById('inlineMeetingForm').classList.remove('active');
     document.getElementById('customerCustomerInfosSection').classList.remove('active');
     document.getElementById('customerMeetingsSection').classList.remove('active');
-    hideCustomerParticipantsSection();
-    hideUpcomingMeetings();
-    hideCustomerActivity();
-    document.querySelector('.tasks-section').style.display = 'none';
+hideCustomerParticipantsSection();
+hideUpcomingMeetings();
+hideCustomerActivity();
+    document.querySelector('.tasks-section').style.display = 'none'; // Hide tasks section
     document.getElementById('notesContainer').classList.add('hidden');
     document.getElementById('mainContainer').classList.add('form-mode');
     
@@ -7756,34 +7718,23 @@ function toggleMeetingParticipants(meetingId, buttonElement) {
     document.querySelector('#inlineCustomerInfoForm [data-tab-content="info"]').classList.add('active');
     state.currentCustomerInfoTab = 'info';
     
-    if (CustomerInfo) {
-        document.getElementById('CustomerInfoId').value = CustomerInfo.id;
-        document.getElementById('CustomerInfoCustomerInput').value = CustomerInfo.customerName || '';
-        state.selectedCustomerInfoCustomerId = CustomerInfo.customerId;
-        document.getElementById('CustomerInfoBackground').value = CustomerInfo.background || '';
-        document.getElementById('CustomerInfoDiscussionPoints').value = CustomerInfo.discussionPoints || '';
-        document.getElementById('CustomerInfoMaterials').value = CustomerInfo.materials || '';
-        document.getElementById('CustomerInfoOutcomes').value = CustomerInfo.outcomes || '';
-        // Restore custom titles
-        document.getElementById('CustomerInfoTitle1').value = CustomerInfo.title1 || 'Background & Context';
-        document.getElementById('CustomerInfoTitle2').value = CustomerInfo.title2 || 'Discussion Points';
-        document.getElementById('CustomerInfoTitle3').value = CustomerInfo.title3 || 'Competitive Intelligence';
-        document.getElementById('CustomerInfoTitle4').value = CustomerInfo.title4 || 'Expected Outcomes';
-    } else {
+   if (CustomerInfo) {
+    document.getElementById('CustomerInfoId').value = CustomerInfo.id;
+    document.getElementById('CustomerInfoCustomerInput').value = CustomerInfo.customerName || '';
+    state.selectedCustomerInfoCustomerId = CustomerInfo.customerId;
+    document.getElementById('CustomerInfoBackground').value = CustomerInfo.background || '';
+    document.getElementById('CustomerInfoDiscussionPoints').value = CustomerInfo.discussionPoints || '';
+    document.getElementById('CustomerInfoMaterials').value = CustomerInfo.materials || '';
+    document.getElementById('CustomerInfoOutcomes').value = CustomerInfo.outcomes || '';
+} else {
         document.getElementById('CustomerInfoForm').reset();
-        document.getElementById('CustomerInfoId').value = '';
+ document.getElementById('CustomerInfoId').value = '';
         document.getElementById('CustomerInfoCustomerInput').value = '';
-        // Reset titles to defaults
-        document.getElementById('CustomerInfoTitle1').value = 'Background & Context';
-        document.getElementById('CustomerInfoTitle2').value = 'Discussion Points';
-        document.getElementById('CustomerInfoTitle3').value = 'Competitive Intelligence';
-        document.getElementById('CustomerInfoTitle4').value = 'Expected Outcomes';
     }
     
     document.getElementById('inlineCustomerInfoForm').classList.add('active');
     window.scrollTo(0, 0);
 }
-
 
 function closeInlineCustomerInfoForm() {
     const formElement = document.getElementById('inlineCustomerInfoForm');
@@ -9615,31 +9566,25 @@ if (customerCustomerInfos.length === 0) {
     section.classList.remove('empty');
     empty.style.display = 'none';  
         container.innerHTML = customerCustomerInfos.map(prep => {
-   // Build HTML content with styled labels using custom titles
-let allContentHTML = '';
-
-const t1 = prep.title1 || 'Background & Context';
-const t2 = prep.title2 || 'Discussion Points';
-const t3 = prep.title3 || 'Competitive Intelligence';
-const t4 = prep.title4 || 'Expected Outcomes';
-
-if (prep.background) {
-    allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">📚 ${escapeHtml(t1).toUpperCase()}</div>`;
-    allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.background).replace(/\n/g, '<br>')}</div>`;
-}
-if (prep.discussionPoints) {
-    allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">💬 ${escapeHtml(t2).toUpperCase()}</div>`;
-    allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.discussionPoints).replace(/\n/g, '<br>')}</div>`;
-}
-if (prep.materials) {
-    allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">📦 ${escapeHtml(t3).toUpperCase()}</div>`;
-    allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.materials).replace(/\n/g, '<br>')}</div>`;
-}
-if (prep.outcomes) {
-    allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">✅ ${escapeHtml(t4).toUpperCase()}</div>`;
-    allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.outcomes).replace(/\n/g, '<br>')}</div>`;
-}
-
+    // Build HTML content with styled labels
+    let allContentHTML = '';
+    
+    if (prep.background) {
+        allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">📚 BACKGROUND</div>`;
+        allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.background).replace(/\n/g, '<br>')}</div>`;
+    }
+    if (prep.discussionPoints) {
+        allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">💬 DISCUSSION POINTS</div>`;
+        allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.discussionPoints).replace(/\n/g, '<br>')}</div>`;
+    }
+    if (prep.materials) {
+        allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">📦 COMPETITIVE INTELLIGENCE</div>`;
+        allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.materials).replace(/\n/g, '<br>')}</div>`;
+    }
+    if (prep.outcomes) {
+        allContentHTML += `<div style="font-weight: 700; color: #000000; margin-bottom: 0.5rem; margin-top: 0.5rem;">✅ EXPECTED OUTCOMES</div>`;
+        allContentHTML += `<div style="margin-bottom: 1rem;">${escapeHtml(prep.outcomes).replace(/\n/g, '<br>')}</div>`;
+    }
     
     // Count how many fields are populated (each adds a header + content block)
 let populatedFieldCount = 0;
@@ -11084,22 +11029,16 @@ renderCustomerSlots();
         showToast('✅ Customer created!', 'success');
     }
     
-const CustomerInfo = {
-    id: document.getElementById('CustomerInfoId').value || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    customerId: customerId,
-    customerName: customerName,
-    // Save custom titles
-    title1: document.getElementById('CustomerInfoTitle1').value.trim() || 'Background & Context',
-    title2: document.getElementById('CustomerInfoTitle2').value.trim() || 'Discussion Points',
-    title3: document.getElementById('CustomerInfoTitle3').value.trim() || 'Competitive Intelligence',
-    title4: document.getElementById('CustomerInfoTitle4').value.trim() || 'Expected Outcomes',
-    background: background,
-    discussionPoints: document.getElementById('CustomerInfoDiscussionPoints').value.trim(),
-    materials: document.getElementById('CustomerInfoMaterials').value.trim(),
-    outcomes: document.getElementById('CustomerInfoOutcomes').value.trim(),
-    createdAt: state.editingCustomerInfo?.createdAt || new Date().toISOString()
-};
-
+    const CustomerInfo = {
+        id: document.getElementById('CustomerInfoId').value || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        customerId: customerId,
+        customerName: customerName,
+        background: background,
+        discussionPoints: document.getElementById('CustomerInfoDiscussionPoints').value.trim(),
+        materials: document.getElementById('CustomerInfoMaterials').value.trim(),
+        outcomes: document.getElementById('CustomerInfoOutcomes').value.trim(),
+        createdAt: state.editingCustomerInfo?.createdAt || new Date().toISOString()
+    };
     
     if (state.editingCustomerInfo) {
         const index = state.CustomerInfos.findIndex(p => p.id === CustomerInfo.id);
@@ -11586,31 +11525,24 @@ if (wasInDashboard && !wasEditingMeeting) {
 }
 
 
-       function generateCustomerInfoExport() {
+        function generateCustomerInfoExport() {
     const customerName = document.getElementById('CustomerInfoCustomerInput').value.trim();
     const background = document.getElementById('CustomerInfoBackground').value.trim();
     const discussionPoints = document.getElementById('CustomerInfoDiscussionPoints').value.trim();
     const materials = document.getElementById('CustomerInfoMaterials').value.trim();
     const outcomes = document.getElementById('CustomerInfoOutcomes').value.trim();
-
-    // Use custom titles with fallbacks
-    const t1 = document.getElementById('CustomerInfoTitle1').value.trim() || 'Background & Context';
-    const t2 = document.getElementById('CustomerInfoTitle2').value.trim() || 'Discussion Points';
-    const t3 = document.getElementById('CustomerInfoTitle3').value.trim() || 'Competitive Intelligence';
-    const t4 = document.getElementById('CustomerInfoTitle4').value.trim() || 'Expected Outcomes';
-
+    
     let exportText = `CUSTOMER INFO\n${'='.repeat(40)}\n\n`;
     exportText += `Customer: ${customerName}\n`;
     exportText += `Date: ${new Date().toLocaleString()}\n\n`;
-
-    if (background) exportText += `${t1.toUpperCase()}\n${'-'.repeat(40)}\n${background}\n\n`;
-    if (discussionPoints) exportText += `${t2.toUpperCase()}\n${'-'.repeat(40)}\n${discussionPoints}\n\n`;
-    if (materials) exportText += `${t3.toUpperCase()}\n${'-'.repeat(40)}\n${materials}\n\n`;
-    if (outcomes) exportText += `${t4.toUpperCase()}\n${'-'.repeat(40)}\n${outcomes}\n\n`;
-
+    
+    if (background) exportText += `BACKGROUND & CONTEXT\n${'-'.repeat(40)}\n${background}\n\n`;
+    if (discussionPoints) exportText += `DISCUSSION POINTS\n${'-'.repeat(40)}\n${discussionPoints}\n\n`;
+    if (materials) exportText += `COMPETITIVE INTELLIGENCE\n${'-'.repeat(40)}\n${materials}\n\n`;
+    if (outcomes) exportText += `EXPECTED OUTCOMES\n${'-'.repeat(40)}\n${outcomes}\n\n`;
+    
     return exportText;
 }
-
 
         function updateCustomerInfoExportPreview() {
             const preview = document.getElementById('CustomerInfoExportPreview');
@@ -16285,7 +16217,6 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
-
 
 
 
