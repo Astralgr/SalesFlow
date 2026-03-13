@@ -5327,7 +5327,6 @@ async function loadUserDataFromFirestore(uid) {
             const data = doc.data();
             state.tasks = data.tasks || [];
             state.notes = data.notes || [];
-            state.customers = data.customers || [];
             state.meetings = data.meetings || [];
             state.CustomerInfos = data.CustomerInfos || [];
             state.meetingTabs = data.meetingTabs || [
@@ -5337,23 +5336,32 @@ async function loadUserDataFromFirestore(uid) {
             state.sharedMeetings = data.sharedMeetings || [];
             state.myShares = data.myShares || [];
 
-            // ✅ CRITICAL FIX: Always sync subscription from Firestore
-            // Firestore is source of truth, not localStorage
+            // ← KEY FIX: if Firestore has no customers, fall back to localStorage
+            if (data.customers && data.customers.length > 0) {
+                state.customers = data.customers;
+            } else {
+                const localCustomers = localStorage.getItem('cnotes_customers');
+                state.customers = localCustomers ? JSON.parse(localCustomers) : [];
+                // If we recovered from localStorage, push it up to Firestore
+                if (state.customers.length > 0) {
+                    saveUserDataToFirestore().catch(console.error);
+                }
+            }
+
             if (data.subscription) {
                 state.subscription = data.subscription;
-                // Keep localStorage in sync
-                localStorage.setItem('cnotes_subscription', 
-                    JSON.stringify(state.subscription));
+                localStorage.setItem('cnotes_subscription', JSON.stringify(state.subscription));
             }
-            // ⚠️ If no subscription in Firestore, keep default free plan
-            // but DO NOT load from localStorage (could be stale)
+        } else {
+            // No Firestore doc at all — load everything from localStorage
+            loadData();
         }
     } catch (error) {
-        console.error('Error loading data:', error);
-        // ✅ Fall back to localStorage only on network error
-        loadSubscription();
+        console.error('Error loading from Firestore, falling back to localStorage:', error);
+        loadData(); // your existing localStorage load function
     }
 }
+
 
 
 async function saveUserDataToFirestore() {
@@ -13295,8 +13303,8 @@ let saveTimeout;
         
 function saveData() {
     clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => {
-        // Always save to localStorage as fallback
+    saveTimeout = setTimeout(async () => {
+        // Always write to localStorage first as source of truth
         localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
         localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
         localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
@@ -13304,14 +13312,18 @@ function saveData() {
         localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
         localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
 
+        // Then sync to Firestore if signed in
         if (auth.currentUser) {
-            saveUserDataToFirestore().catch(err => {
-                showToast('⚠️ Cloud save failed — data saved locally', 'error');
-                console.error('Firestore save error:', err);
-            });
+            try {
+                await saveUserDataToFirestore();
+            } catch (err) {
+                console.error('Firestore save failed:', err);
+                showToast('⚠️ Cloud save failed — changes saved locally', 'error');
+            }
         }
     }, 300);
 }
+
 
 
 // ========== EXPORT ALL DATA ==========
