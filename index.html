@@ -9960,11 +9960,18 @@ if (state.currentMeetingTab === 'individual') {
     empty.innerHTML = `
         <div class="empty-state-compact-icon"></div>
         <div></div>
-        <button class="btn-schedule-meeting" onclick="openInlineMeetingFormForCustomer('${customerId}')" style="margin: 0 auto; display: inline-flex;">
-            <span>+</span>
-            <span>Meeting</span>
-        </button>
+        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; margin-top:0.5rem;">
+            <button class="btn-schedule-meeting" onclick="openInlineMeetingFormForCustomer('${customerId}')" style="display:inline-flex;">
+                <span>+</span>
+                <span>Meeting</span>
+            </button>
+            <button class="btn-schedule-meeting" onclick="openPhoneCallModal('${customerId}')" style="display:inline-flex;">
+                <span>+</span>
+                <span>Call</span>
+            </button>
+        </div>
     `;
+
         
         // Clean up ALL buttons from header when empty
         const sectionHeader = section.querySelector('.customer-section-header');
