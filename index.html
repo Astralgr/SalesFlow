@@ -2925,6 +2925,17 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
                 </div>
                 <span>New Meeting</span>
             </button>
+<button class="action-btn btn-call" id="newCallBtn">
+                <div class="action-btn-icon">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+
+                </svg>
+                </div>
+                <span>New Call</span>
+            </button>
+
             <button class="action-btn btn-new-task" id="newTaskBtn">
                 <div class="action-btn-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -7578,6 +7589,16 @@ document.querySelectorAll('.upcoming-filter-btn').forEach(btn => {
         openInlineMeetingForm();
     }
 });
+
+document.getElementById('newCallBtn').addEventListener('click', () => {
+    if (state.currentCustomer !== 'all') {
+        openPhoneCallModal(state.currentCustomer);
+    } else {
+        openPhoneCallModal();
+    }
+});
+
+
             document.getElementById('newTaskBtn').addEventListener('click', () => openTaskModal());
             document.getElementById('newNoteBtn').addEventListener('click', () => openNoteModal());
 document.getElementById('addCustomerBtn').addEventListener('click', () => openAddCustomerForm());
@@ -13544,25 +13565,30 @@ let saveTimeout;
 function saveData() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
-        // Always write to localStorage first as source of truth
-        localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
-        localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
-        localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
-        localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
-        localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
-        localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
+        // Always write to localStorage first — this must never fail
+        try {
+            localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
+            localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
+            localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
+            localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
+            localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
+            localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
+        } catch (localErr) {
+            console.error('localStorage save failed:', localErr);
+        }
 
-        // Then sync to Firestore if signed in
-        if (auth.currentUser) {
+        // Then sync to Firestore only if signed in and online
+        if (auth.currentUser && navigator.onLine) {
             try {
                 await saveUserDataToFirestore();
             } catch (err) {
                 console.error('Firestore save failed:', err);
-                showToast('⚠️ Cloud save failed — changes saved locally', 'error');
+                showToast('⚠ Cloud save failed — changes saved locally', 'error');
             }
         }
     }, 300);
 }
+
 
 
 
