@@ -5337,23 +5337,16 @@ async function loadUserDataFromFirestore(uid) {
             state.myShares = data.myShares || [];
 
             // ← KEY FIX: if Firestore has no customers, fall back to localStorage
-// WITH this:
-const firestoreCustomers = data.customers || [];
-const localRaw = localStorage.getItem('cnotes_customers');
-const localCustomers = localRaw ? JSON.parse(localRaw) : [];
-
-// Use Firestore if it has more customers, otherwise use localStorage
-// (localStorage is written synchronously and may be more up-to-date)
-if (firestoreCustomers.length >= localCustomers.length && firestoreCustomers.length > 0) {
-    state.customers = firestoreCustomers;
-} else if (localCustomers.length > 0) {
-    state.customers = localCustomers;
-    // Push the more recent local data back to Firestore
-    saveUserDataToFirestore().catch(console.error);
-} else {
-    state.customers = [];
-}
-
+            if (data.customers && data.customers.length > 0) {
+                state.customers = data.customers;
+            } else {
+                const localCustomers = localStorage.getItem('cnotes_customers');
+                state.customers = localCustomers ? JSON.parse(localCustomers) : [];
+                // If we recovered from localStorage, push it up to Firestore
+                if (state.customers.length > 0) {
+                    saveUserDataToFirestore().catch(console.error);
+                }
+            }
 
             if (data.subscription) {
                 state.subscription = data.subscription;
@@ -10708,11 +10701,8 @@ document.getElementById('customerId').value = '';
 
 
     
-const existingId = document.getElementById('customerId').value;
-const existingCustomer = existingId 
-    ? state.customers.find(c => c.id === existingId) 
-    : null;
-const isEditing = !!existingCustomer;
+    const existingId = document.getElementById('customerId').value;
+    const isEditing = state.editingCustomer && existingId;
     
     const customer = {
         id: existingId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
@@ -10732,34 +10722,27 @@ const isEditing = !!existingCustomer;
         createdAt: state.editingCustomer?.createdAt || new Date().toISOString()
     };
     
-if (isEditing) {
-    const index = state.customers.findIndex(c => c.id === existingId);
-    if (index !== -1) {
-        const oldName = state.customers[index].name;
-        // Preserve fields not in the edit form
-        customer.pinned = state.customers[index].pinned;
-        customer.participants = state.customers[index].participants;
-        customer.createdAt = state.customers[index].createdAt; // preserve original
-        state.customers[index] = customer;
-
-        if (oldName !== customer.name) {
-            state.tasks.forEach(t => {
-                if (t.customerId === customer.id) t.customerName = customer.name;
-            });
-            state.meetings.forEach(m => {
-                if (m.customerId === customer.id) m.customerName = customer.name;
-            });
-            state.CustomerInfos.forEach(p => {
-                if (p.customerId === customer.id) p.customerName = customer.name;
-            });
+    if (isEditing) {
+        const index = state.customers.findIndex(c => c.id === customer.id);
+        if (index !== -1) {
+            const oldName = state.customers[index].name;
+            customer.pinned = state.customers[index].pinned;
+            customer.participants = state.customers[index].participants;
+            state.customers[index] = customer;
+            
+            // Sync name change to all references
+            if (oldName !== customer.name) {
+                state.tasks.forEach(t => { if (t.customerId === customer.id) t.customerName = customer.name; });
+                state.meetings.forEach(m => { if (m.customerId === customer.id) m.customerName = customer.name; });
+                state.CustomerInfos.forEach(p => { if (p.customerId === customer.id) p.customerName = customer.name; });
+            }
         }
+        showToast('✅ Customer updated!', 'success');
+    } else {
+        // New customer - add to array
+        state.customers.push(customer);
+        showToast('✅ Customer added!', 'success');
     }
-    showToast('✅ Customer updated!', 'success');
-} else {
-    state.customers.push(customer);
-    showToast('✅ Customer added!', 'success');
-}
-
     
     saveData();
     renderCustomerList();
@@ -13319,18 +13302,17 @@ function toggleTheme() {
 let saveTimeout;
         
 function saveData() {
-    // Write to localStorage IMMEDIATELY (synchronous) — no debounce
-    // This ensures data survives a quick page refresh
-    localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
-    localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
-    localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
-    localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
-    localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
-    localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
-
-    // Debounce only the Firestore write (network call)
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
+        // Always write to localStorage first as source of truth
+        localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
+        localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
+        localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
+        localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
+        localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
+        localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
+
+        // Then sync to Firestore if signed in
         if (auth.currentUser) {
             try {
                 await saveUserDataToFirestore();
@@ -13341,7 +13323,6 @@ function saveData() {
         }
     }, 300);
 }
-
 
 
 
@@ -16213,5 +16194,17 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
