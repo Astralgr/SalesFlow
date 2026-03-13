@@ -5359,7 +5359,7 @@ async function loadUserDataFromFirestore(uid) {
 async function saveUserDataToFirestore() {
     const user = auth.currentUser;
     if (!user) return;
-    
+
     try {
         await db.collection('users').doc(user.uid).set({
             tasks: state.tasks,
@@ -5370,13 +5370,16 @@ async function saveUserDataToFirestore() {
             meetingTabs: state.meetingTabs,
             sharedMeetings: state.sharedMeetings,
             myShares: state.myShares,
-             subscription: state.subscription, 
+            subscription: state.subscription,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     } catch (error) {
-        console.error('Error saving data:', error);
+        console.error('Error saving to Firestore:', error);
+        // Rethrow so callers can handle it
+        throw error;
     }
 }
+
 
        const state = {
 subscription: { plan: 'free', status: 'active' },
@@ -13289,21 +13292,27 @@ function toggleTheme() {
 }
 
 let saveTimeout;
+        
 function saveData() {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
+        // Always save to localStorage as fallback
+        localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
+        localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
+        localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
+        localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
+        localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
+        localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
+
         if (auth.currentUser) {
-            saveUserDataToFirestore();
-        } else {
-            localStorage.setItem('cnotes_tasks', JSON.stringify(state.tasks));
-            localStorage.setItem('cnotes_notes', JSON.stringify(state.notes));
-            localStorage.setItem('cnotes_customers', JSON.stringify(state.customers));
-            localStorage.setItem('cnotes_meetings', JSON.stringify(state.meetings));
-            localStorage.setItem('cnotes_CustomerInfos', JSON.stringify(state.CustomerInfos));
-            localStorage.setItem('cnotes_meetingTabs', JSON.stringify(state.meetingTabs));
+            saveUserDataToFirestore().catch(err => {
+                showToast('⚠️ Cloud save failed — data saved locally', 'error');
+                console.error('Firestore save error:', err);
+            });
         }
     }, 300);
 }
+
 
 // ========== EXPORT ALL DATA ==========
 function exportAllData() {
@@ -16173,6 +16182,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
