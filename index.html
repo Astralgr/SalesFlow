@@ -5369,24 +5369,28 @@ async function saveUserDataToFirestore() {
     if (!user) return;
 
     try {
+        // Firestore rejects undefined values — JSON roundtrip strips them safely
+        const strip = (data) => JSON.parse(JSON.stringify(data));
+
         await db.collection('users').doc(user.uid).set({
-            tasks: state.tasks,
-            notes: state.notes,
-            customers: state.customers,
-            meetings: state.meetings,
-            CustomerInfos: state.CustomerInfos,
-            meetingTabs: state.meetingTabs,
-            sharedMeetings: state.sharedMeetings,
-            myShares: state.myShares,
-            subscription: state.subscription,
+            tasks: strip(state.tasks),
+            notes: strip(state.notes),
+            customers: strip(state.customers),
+            meetings: strip(state.meetings),
+            CustomerInfos: strip(state.CustomerInfos),
+            meetingTabs: strip(state.meetingTabs),
+            sharedMeetings: strip(state.sharedMeetings),
+            myShares: strip(state.myShares),
+            subscription: strip(state.subscription),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
+
     } catch (error) {
-        console.error('Error saving to Firestore:', error);
-        // Rethrow so callers can handle it
+        console.error('Firestore save error:', error.code, error.message);
         throw error;
     }
 }
+
 
 
        const state = {
@@ -10722,13 +10726,14 @@ document.getElementById('customerId').value = '';
         createdAt: state.editingCustomer?.createdAt || new Date().toISOString()
     };
     
-    if (isEditing) {
-        const index = state.customers.findIndex(c => c.id === customer.id);
-        if (index !== -1) {
-            const oldName = state.customers[index].name;
-            customer.pinned = state.customers[index].pinned;
-            customer.participants = state.customers[index].participants;
-            state.customers[index] = customer;
+if (isEditing) {
+    const index = state.customers.findIndex(c => c.id === customer.id);
+    if (index !== -1) {
+        const oldName = state.customers[index].name;
+        customer.pinned = state.customers[index].pinned || false;        // was: possibly undefined
+        customer.participants = state.customers[index].participants || []; // was: possibly undefined
+        state.customers[index] = customer;
+
             
             // Sync name change to all references
             if (oldName !== customer.name) {
