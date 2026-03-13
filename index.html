@@ -6480,11 +6480,12 @@ function renderCustomerSlots() {
     } else {
         const pct = Math.min((used / limit) * 100, 100);
         fill.style.width = pct + '%';
-        fill.className = 'customer-slots-fill ' + (used >= limit ? 'limit' : used >= limit - 1 ? 'warning' : 'normal');
+        fill.className = 'customer-slots-fill ' + 
+            (used >= limit ? 'limit' : used >= limit - 1 ? 'warning' : 'normal');
         count.textContent = used + ' of ' + limit;
     }
 
-    // Show cancellation warning
+    // ✅ Show reactivation warning with clickable link
     if (state.subscription.cancelAt) {
         const cancelDate = new Date(state.subscription.cancelAt);
         const formattedDate = cancelDate.toLocaleDateString('en-US', { 
@@ -6494,8 +6495,39 @@ function renderCustomerSlots() {
         
         count.innerHTML = count.textContent + 
             ` <span style="color: var(--warning); font-weight: 700;">• Ends ${formattedDate} (${daysLeft}d)</span>`;
+
+        // ✅ Add reactivate button below the slots bar
+        let reactivateBtn = document.getElementById('reactivatePlanBtn');
+        if (!reactivateBtn) {
+            reactivateBtn = document.createElement('div');
+            reactivateBtn.id = 'reactivatePlanBtn';
+            reactivateBtn.style.cssText = 'margin-top: 0.5rem; text-align: center;';
+            container.appendChild(reactivateBtn);
+        }
+        reactivateBtn.innerHTML = `
+            <button onclick="reactivateSubscription()" style="
+                background: linear-gradient(135deg, #023747 0%, #1ba8af 100%);
+                color: white;
+                border: none;
+                padding: 0.35rem 0.75rem;
+                border-radius: 6px;
+                font-size: 0.65rem;
+                font-weight: 700;
+                cursor: pointer;
+                width: 100%;
+                transition: all 0.2s;
+            " onmouseover="this.style.opacity='0.9'"
+               onmouseout="this.style.opacity='1'">
+                🔄 Reactivate Plan
+            </button>
+        `;
+    } else {
+        // ✅ Remove reactivate button if not cancelling
+        const reactivateBtn = document.getElementById('reactivatePlanBtn');
+        if (reactivateBtn) reactivateBtn.remove();
     }
 }
+
         
 function openUpgradeModal() { document.getElementById('upgradeModal').classList.add('active'); updatePlanCards(); }
 function closeUpgradeModal() { document.getElementById('upgradeModal').classList.remove('active'); }
@@ -6512,16 +6544,27 @@ function updatePlanCards() {
         card.classList.remove('current');
 
         if (plan === state.subscription.plan) {
-            // ── Current plan ──
             card.classList.add('current');
             btn.className = 'plan-btn secondary';
-            btn.textContent = 'Current Plan';
-            btn.onclick = null;
             btn.style.cursor = 'default';
             btn.style.opacity = '0.7';
+            btn.onclick = null;
+
+            // ✅ Show reactivate button if cancelling
+            if (state.subscription.cancelAt) {
+                btn.textContent = '🔄 Reactivate';
+                btn.className = 'plan-btn primary';
+                btn.style.cursor = 'pointer';
+                btn.style.opacity = '1';
+                btn.onclick = async () => {
+                    closeUpgradeModal();
+                    await reactivateSubscription();
+                };
+            } else {
+                btn.textContent = 'Current Plan';
+            }
 
         } else if (selectedRank < currentRank) {
-            // ── Lower plan — block downgrade ──
             btn.className = 'plan-btn secondary';
             btn.textContent = '—';
             btn.onclick = null;
@@ -6529,7 +6572,6 @@ function updatePlanCards() {
             btn.style.opacity = '0.4';
 
         } else {
-            // ── Higher plan — allow upgrade ──
             btn.className = 'plan-btn primary';
             btn.textContent = 'Upgrade';
             btn.style.cursor = 'pointer';
@@ -6538,7 +6580,7 @@ function updatePlanCards() {
         }
     });
 
-    // ── Show cancel button for paid users ──
+    // ✅ Manage subscription button area
     let manageDiv = document.getElementById('manageSubscriptionDiv');
 
     if (state.subscription.plan !== 'free') {
@@ -6546,6 +6588,49 @@ function updatePlanCards() {
             manageDiv = document.createElement('div');
             manageDiv.id = 'manageSubscriptionDiv';
             manageDiv.style.cssText = 'text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+            document.querySelector('.upgrade-modal-content').appendChild(manageDiv);
+        }
+
+        // ✅ Show different button based on cancellation state
+        if (state.subscription.cancelAt) {
+            const cancelDate = new Date(state.subscription.cancelAt);
+            const formattedDate = cancelDate.toLocaleDateString('en-US', { 
+                month: 'short', day: 'numeric', year: 'numeric'
+            });
+            const daysLeft = Math.ceil((cancelDate - new Date()) / (1000 * 60 * 60 * 24));
+
+            manageDiv.innerHTML = `
+                <div style="
+                    background: rgba(245, 158, 11, 0.1);
+                    border: 1px solid rgba(245, 158, 11, 0.3);
+                    border-radius: 8px;
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                ">
+                    <div style="font-size: 0.85rem; color: var(--warning); font-weight: 700; margin-bottom: 0.5rem;">
+                        ⚠️ Your plan ends on ${formattedDate} (${daysLeft} days left)
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                        You still have full access until then. Reactivate to keep your plan.
+                    </div>
+                </div>
+                <button onclick="closeUpgradeModal(); reactivateSubscription();" style="
+                    background: linear-gradient(135deg, #023747 0%, #1ba8af 100%);
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    width: 100%;
+                    transition: all 0.2s;
+                " onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'"
+                   onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'">
+                    🔄 Reactivate My Plan
+                </button>
+            `;
+        } else {
             manageDiv.innerHTML = `
                 <button onclick="openManageSubscription()" style="
                     background: transparent;
@@ -6561,12 +6646,12 @@ function updatePlanCards() {
                     Cancel Subscription
                 </button>
             `;
-            document.querySelector('.upgrade-modal-content').appendChild(manageDiv);
         }
     } else if (manageDiv) {
         manageDiv.remove();
     }
 }
+
 
 async function cancelSubscription() {
     try {
@@ -15732,6 +15817,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
