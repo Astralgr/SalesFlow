@@ -3770,8 +3770,11 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
 <div class="customer-activity-section" id="customerActivitySection">
    <div class="section-header">
     <h2 class="section-title">Customer Activity</h2>
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
-<button class="fullscreen-btn" id="activityFullscreenBtn" onclick="toggleSectionFullscreen('customerActivitySection', 'activityFullscreenBtn')">⛶ Expand</button>
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <input type="text" class="form-input" id="activitySearchInput" placeholder="Search..." 
+               style="width: 200px; padding: 0.35rem 0.75rem; font-size: 0.8rem;"
+               oninput="renderCustomerActivity()">
+        <button class="fullscreen-btn" id="activityFullscreenBtn" onclick="toggleSectionFullscreen('customerActivitySection', 'activityFullscreenBtn')">⛶ Expand</button>
         <button class="filter-btn active" data-activity-filter="all" onclick="filterCustomerActivity('all')">All</button>
         <button class="filter-btn" data-activity-filter="week" onclick="filterCustomerActivity('week')">Week</button>
         <button class="filter-btn" data-activity-filter="month" onclick="filterCustomerActivity('month')">Month</button>
@@ -9285,26 +9288,37 @@ function renderCustomerActivity() {
     });
     
     // **NEW: Apply global search filter**
-    let filteredMeetings = allMeetingsWithCustomers;
-if (state.searchQuery) {
+    // Apply both global search and local activity search
+const localActivitySearch = (document.getElementById('activitySearchInput')?.value || '').toLowerCase().trim();
+const activityQuery = localActivitySearch || state.searchQuery || '';
+
+let filteredMeetings = allMeetingsWithCustomers;
+if (activityQuery) {
     filteredMeetings = allMeetingsWithCustomers.filter(data => {
-        const matchesCustomer = data.customer.name.toLowerCase().includes(state.searchQuery);
-        const matchesMeeting = data.meeting.title.toLowerCase().includes(state.searchQuery);
-        const matchesIndustry = data.customer.industry && data.customer.industry.toLowerCase().includes(state.searchQuery);
-        const matchesTags = data.meeting.tags && data.meeting.tags.some(tag => tag.toLowerCase().includes(state.searchQuery));
-        const matchesActivityNote = data.meeting.activityNote && data.meeting.activityNote.toLowerCase().includes(state.searchQuery);
-        
+        const matchesCustomer = data.customer.name.toLowerCase().includes(activityQuery);
+        const matchesMeeting = data.meeting.title && data.meeting.title.toLowerCase().includes(activityQuery);
+        const matchesIndustry = data.customer.industry && data.customer.industry.toLowerCase().includes(activityQuery);
+        const matchesTags = data.meeting.tags && data.meeting.tags.some(tag => tag.toLowerCase().includes(activityQuery));
+        const matchesActivityNote = data.meeting.activityNote && data.meeting.activityNote.toLowerCase().includes(activityQuery);
+
         // Search in meeting notes
         const notesText = data.meeting.notesHTML ? htmlToPlainText(data.meeting.notesHTML) : (data.meeting.notes || '');
-        const matchesNotes = notesText.toLowerCase().includes(state.searchQuery);
-        
+        const matchesNotes = notesText.toLowerCase().includes(activityQuery);
+
         // Search in next steps
         const nextStepsText = data.meeting.nextStepsHTML ? htmlToPlainText(data.meeting.nextStepsHTML) : (data.meeting.nextSteps || '');
-        const matchesNextSteps = nextStepsText.toLowerCase().includes(state.searchQuery);
-        
-        return matchesCustomer || matchesMeeting || matchesIndustry || matchesTags || matchesActivityNote || matchesNotes || matchesNextSteps;
+        const matchesNextSteps = nextStepsText.toLowerCase().includes(activityQuery);
+
+        // Search in participants (useful for calls)
+        const matchesParticipants = data.meeting.participants && data.meeting.participants.some(p =>
+            p.name && p.name.toLowerCase().includes(activityQuery)
+        );
+
+        return matchesCustomer || matchesMeeting || matchesIndustry || matchesTags ||
+               matchesActivityNote || matchesNotes || matchesNextSteps || matchesParticipants;
     });
 }
+
 
     // Sort by most recent first
     filteredMeetings.sort((a, b) => b.meetingDate - a.meetingDate);
