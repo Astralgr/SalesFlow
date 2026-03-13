@@ -4286,6 +4286,111 @@ h4 {font-size: 1.1rem;} h5 {font-size: 1rem;} h6 {font-size: 0.9rem;}
     </div>
 </div>
 
+<!-- Phone Call Modal -->
+<div class="modal" id="phoneCallModal">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Log Phone Call</h3>
+            <button class="close-btn" onclick="closePhoneCallModal()">×</button>
+        </div>
+
+        <!-- Connected / Not Connected toggle -->
+<div style="display:flex; background:#f3f4f6; border-radius:8px; padding:3px; margin-bottom:1rem; gap:0;">
+    <button type="button" id="callToggleConnected" onclick="setCallMode('connected')"
+        style="flex:1; padding:0.5rem 1rem; border:none; border-radius:6px; font-size:0.85rem; 
+               font-weight:600; cursor:pointer; transition:all 0.2s;
+               background:linear-gradient(135deg, #023747 0%, #1ba8af 100%);
+               color:white; box-shadow:0 2px 6px rgba(27,168,175,0.3);">
+        Connected
+    </button>
+    <button type="button" id="callToggleNotConnected" onclick="setCallMode('not-connected')"
+        style="flex:1; padding:0.5rem 1rem; border:none; border-radius:6px; font-size:0.85rem;
+               font-weight:600; cursor:pointer; transition:all 0.2s;
+               background:transparent; color:#9ca3af;">
+        Not Connected
+    </button>
+</div>
+
+
+        <!-- Not connected banner (hidden by default) -->
+        <div class="call-not-connected-banner" id="callNotConnectedBanner" style="display:none;">
+            ⚠ No notes needed — just logging the attempt
+        </div>
+
+        <form id="phoneCallForm">
+            <input type="hidden" id="callId">
+            <input type="hidden" id="callMode" value="connected">
+
+            <!-- Customer -->
+            <div class="form-group">
+                <label class="form-label">Customer *</label>
+                <div class="customer-combobox">
+                    <input type="text" class="customer-combobox-input" id="callCustomerInput"
+                           placeholder="Type to search or add customer..." autocomplete="off">
+                    <div class="customer-dropdown" id="callCustomerDropdown"></div>
+                </div>
+            </div>
+
+            <!-- Date + Duration (duration hidden when not connected) -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Date & Time *</label>
+                    <input type="datetime-local" class="form-input" id="callDate">
+                </div>
+                <div class="form-group" id="callDurationGroup">
+                    <label class="form-label">Duration (min)</label>
+                    <input type="number" class="form-input" id="callDuration" placeholder="15" min="1">
+                </div>
+                <div class="form-group" id="callReasonGroup" style="display:none;">
+                    <label class="form-label">Reason</label>
+                    <select class="form-select" id="callReason">
+                        <option value="No Answer">No Answer</option>
+                        <option value="Voicemail">Voicemail</option>
+                        <option value="Busy">Busy</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Spoke With / Tried to Reach -->
+            <div class="form-group">
+                <label class="form-label" id="callContactLabel">Spoke With</label>
+                <div class="quick-add-contacts active" id="callQuickAddContacts" style="display:none;">
+                    <div class="quick-add-contacts-title">
+                        <span>⚡</span><span>Quick Add from Contacts</span>
+                    </div>
+                    <div class="quick-add-contacts-list" id="callQuickAddList"></div>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                    <input type="text" class="form-input" id="callContactInput" placeholder="Contact name...">
+                    <button type="button" class="btn btn-primary" onclick="addCallContact()" style="white-space:nowrap; padding: 0.5rem 0.75rem;">+ Add</button>
+                </div>
+                <div id="callContactsList" style="display:flex; flex-wrap:wrap; gap:0.35rem;"></div>
+            </div>
+
+            <!-- Notes (hidden when not connected) -->
+            <div class="form-group" id="callNotesGroup">
+                <label class="form-label">Call Notes</label>
+                <textarea class="form-textarea" id="callNotes" placeholder="What was discussed..." style="min-height:80px;"></textarea>
+            </div>
+
+            <!-- Action Items (hidden when not connected) -->
+            <div class="form-group" id="callActionsGroup">
+                <label class="form-label">Action Items</label>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                    <input type="text" class="form-input" id="callActionInput" placeholder="Add action item...">
+                    <button type="button" class="btn btn-primary" onclick="addCallAction()" style="white-space:nowrap; padding: 0.5rem 0.75rem;">+ Add</button>
+                </div>
+                <div id="callActionsList"></div>
+            </div>
+
+            <div class="form-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePhoneCallModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Call</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 
 <!-- Tab Context Menu -->
@@ -9067,17 +9172,21 @@ function renderCustomerActivity() {
     const allMeetingsWithCustomers = [];
     
     state.customers.forEach(customer => {
-        const meetings = state.meetings.filter(m => {
-            if (m.customerId !== customer.id) return false;
-            const meetingDate = new Date(m.date);
-            
-            // Filter by date range if applicable
-            if (filterStartDate && meetingDate < filterStartDate) return false;
-            if (filterEndDate && meetingDate > filterEndDate) return false;
-            
-            // Show if meeting is in the past OR if it's been marked as completed
-            return meetingDate < now || m.markedCompleted;
-        });
+    const meetings = state.meetings.filter(m => {
+        if (m.customerId !== customer.id) return false;
+        const meetingDate = new Date(m.date);
+
+        // Filter by date range if applicable
+        if (filterStartDate && meetingDate < filterStartDate) return false;
+        if (filterEndDate && meetingDate > filterEndDate) return false;
+
+        // Show calls always (they are always past by definition)
+        if (m.type === 'phone-call') return true;
+
+        // Show if meeting is in the past OR if it's been marked as completed
+        return meetingDate < now || m.markedCompleted;
+    });
+
         
         meetings.forEach(meeting => {
             const meetingDate = new Date(meeting.date);
@@ -9188,11 +9297,36 @@ if (sectionTitle) {
         }
         
         const noteText = data.meeting.activityNote || '';
-        return `
-            <div class="activity-row ${statusClass}" onclick="scrollToMeetingInHistory('${data.meeting.id}', '${data.customer.id}')">
-                <div class="activity-status-dot ${statusClass}"></div>
-                <div class="activity-customer">${escapeHtml(data.customer.name)}</div>
-                <div class="activity-meeting">${escapeHtml(data.meeting.title)}</div>
+        // Build display values for calls vs meetings
+const isPhoneCall = data.meeting.type === 'phone-call';
+const activityRowClass = isPhoneCall
+    ? (data.meeting.connected ? 'phone-call-connected' : 'phone-call-missed')
+    : statusClass;
+const dotClass = isPhoneCall
+    ? (data.meeting.connected ? 'phone-call-connected' : 'phone-call-missed')
+    : statusClass;
+
+const activityTitle = isPhoneCall
+    ? `Call${data.meeting.participants && data.meeting.participants.length > 0
+        ? ' · ' + data.meeting.participants.map(p => p.name).join(', ')
+        : ''}`
+    : data.meeting.title;
+
+const activitySubline = isPhoneCall
+    ? (data.meeting.connected
+        ? `${data.meeting.duration ? data.meeting.duration + ' min' : 'Connected'}`
+        : (data.meeting.reason || 'No Answer'))
+    : '';
+
+return `
+    <div class="activity-row ${activityRowClass}" onclick="scrollToMeetingInHistory('${data.meeting.id}', '${data.customer.id}')">
+        <div class="activity-status-dot ${dotClass}"></div>
+        <div class="activity-customer">${escapeHtml(data.customer.name)}</div>
+        <div class="activity-meeting">
+            ${escapeHtml(activityTitle)}
+            ${activitySubline ? `<br><span style="font-size:0.75rem; color:var(--text-secondary);">${escapeHtml(activitySubline)}</span>` : ''}
+        </div>
+
                 <div class="activity-note-cell" onclick="event.stopPropagation()">
                     ${noteText ? `<span class="activity-note-text" onclick="editActivityNote('${data.meeting.id}')" title="${escapeHtml(noteText)}">${escapeHtml(noteText)}</span>` : `<textarea rows="1" class="activity-note-input" id="note-${data.meeting.id}" placeholder="+ note" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onkeypress="if(event.key==='Enter')saveActivityNote('${data.meeting.id}')" onblur="saveActivityNote('${data.meeting.id}')"></textarea>`}
                 </div>
@@ -9852,13 +9986,13 @@ const typeIcon = typeIcons[meeting.type] || (meeting.customTypeIcon || '📋');
                                 </button>
 
                     <!-- ========== SHARING FEATURE - START ========== -->
-                    <button class="meeting-action-btn share" onclick="event.stopPropagation(); openShareModal('${meeting.id}')" title="Share">
+                    ${meeting.type !== 'phone-call' ? `<button class="meeting-action-btn share" onclick="event.stopPropagation(); openShareModal('${meeting.id}')" title="Share">
                         <svg viewBox="0 0 24 24">
                             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
                             <polyline points="16 6 12 2 8 6"></polyline>
                             <line x1="12" y1="2" x2="12" y2="15"></line>
                         </svg>
-                    </button>
+                    </button>` : ''}
                     <!-- ========== SHARING FEATURE - END ========== -->
                             </div>
                             
@@ -9937,27 +10071,38 @@ if (sectionHeader) {
     rightWrapper.style.gap = '0.5rem';
     
     // Create add meeting button
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn-add-meeting';
-    addBtn.innerHTML = '+ Meeting';
-    addBtn.onclick = (e) => {
-        e.stopPropagation();
-        openInlineMeetingFormForCustomer(customerId);
-    };
-    
+   const addBtn = document.createElement('button');
+addBtn.className = 'btn-add-meeting';
+addBtn.innerHTML = '+ Meeting';
+addBtn.onclick = (e) => {
+    e.stopPropagation();
+    openInlineMeetingFormForCustomer(customerId);
+};
+
+// + Call button
+const callBtn = document.createElement('button');
+callBtn.className = 'btn-add-meeting';
+callBtn.innerHTML = '+ Call';
+callBtn.onclick = (e) => {
+    e.stopPropagation();
+    openPhoneCallModal(customerId);
+};
+
 // Create follow-up button
 const followUpBtn = document.createElement('button');
 followUpBtn.className = 'btn-add-meeting';
 followUpBtn.innerHTML = '+ Follow-Up';
 followUpBtn.onclick = (e) => {
     e.stopPropagation();
-    openFollowUpModal('past'); // Pass 'past' as parameter
+    openFollowUpModal('past');
 };
-    
-    rightWrapper.appendChild(addBtn);
-    rightWrapper.appendChild(followUpBtn);
-    rightWrapper.appendChild(toggle);
-    sectionHeader.appendChild(rightWrapper);
+
+rightWrapper.appendChild(addBtn);
+rightWrapper.appendChild(callBtn);
+rightWrapper.appendChild(followUpBtn);
+rightWrapper.appendChild(toggle);
+sectionHeader.appendChild(rightWrapper);
+
 }
     }
     
@@ -9996,10 +10141,67 @@ followUpBtn.onclick = (e) => {
             }
         }
 
-        function editMeetingFromCustomer(meetingId) {
-            const meeting = state.meetings.find(m => m.id === meetingId);
-            if (meeting) openInlineMeetingForm(meeting);
-        }
+function editMeetingFromCustomer(meetingId) {
+    const meeting = state.meetings.find(m => m.id === meetingId);
+    if (!meeting) return;
+
+    if (meeting.type === 'phone-call') {
+        openPhoneCallModalForEdit(meeting);
+    } else {
+        openInlineMeetingForm(meeting);
+    }
+}
+
+function openPhoneCallModalForEdit(meeting) {
+    callContacts = meeting.participants ? [...meeting.participants] : [];
+    callActions = [];
+    callSelectedCustomerId = meeting.customerId;
+
+    // Load existing action items from tasks
+    const existingTasks = state.tasks.filter(t => t.meetingId === meeting.id);
+    callActions = existingTasks.map(t => t.title);
+
+    // Set customer
+    document.getElementById('callCustomerInput').value = meeting.customerName || '';
+
+    // Set date
+    document.getElementById('callDate').value = meeting.date;
+
+    // Set mode
+    const mode = meeting.connected ? 'connected' : 'not-connected';
+    document.getElementById('callMode').value = mode;
+
+    // Set duration or reason
+    if (meeting.connected) {
+        document.getElementById('callDuration').value = meeting.duration || '';
+    } else {
+        document.getElementById('callReason').value = meeting.reason || 'No Answer';
+    }
+
+    // Set notes
+    document.getElementById('callNotes').value = meeting.notes || '';
+
+    // Store the id so submit knows we are editing
+    document.getElementById('callId').value = meeting.id;
+
+    // Render lists
+    renderCallContactsList();
+    renderCallActionsList();
+
+    // Load quick-add contacts
+    if (meeting.customerId) {
+        loadCallQuickAddContacts(meeting.customerId);
+    }
+
+    // Apply mode visuals
+    setCallMode(mode);
+
+    // Setup combobox
+    setupCallCustomerCombobox();
+
+    document.getElementById('phoneCallModal').classList.add('active');
+}
+
 
         function calculateMEDDPICCCompletion(meeting) {
             const fields = [
@@ -11251,9 +11453,11 @@ if (!isEditing && !canAddCustomer()) { showLimitReachedModal(); return; }
     // ========== END OF FIX ==========
     
     // All validation passed, proceed with save
-    const title = document.getElementById('meetingTitle').value.trim();
-    const date = document.getElementById('meetingDate').value;
-    const type = document.getElementById('meetingType').value;
+    const rawTitle = document.getElementById('meetingTitle').value.trim();
+const title = `Meeting · ${rawTitle}`;
+const date = document.getElementById('meetingDate').value;
+const type = document.getElementById('meetingType').value;
+
     const notesHTML = getEditorHTML('meetingNotesEditor');
     const notesText = getEditorText('meetingNotesEditor');
     const nextStepsHTML = getEditorHTML('meetingNextStepsEditor');
@@ -12590,24 +12794,50 @@ activities.push({
         });
     }
     
-    // Add meetings
-    const customerMeetings = state.meetings.filter(m => m.customerId === customerId);
-    customerMeetings.forEach(meeting => {
-        const meetingDate = new Date(meeting.date);
-        const now = new Date();
+   // Add meetings and calls
+const customerMeetings = state.meetings.filter(m => m.customerId === customerId);
+customerMeetings.forEach(meeting => {
+    const meetingDate = new Date(meeting.date);
+    const now = new Date();
+
+    if (meeting.type === 'phone-call') {
+        const contactNames = meeting.participants && meeting.participants.length > 0
+            ? meeting.participants.map(p => p.name).join(', ')
+            : '';
+        const label = meeting.connected
+            ? `Call${contactNames ? ' · ' + contactNames : ''}`
+            : `Call${contactNames ? ' · ' + contactNames : ''} — ${meeting.reason || 'No Answer'}`;
+
+        activities.push({
+            type: 'call',
+            id: meeting.id,
+            icon: '📱',
+            title: label,
+            subtitle: meeting.connected
+                ? `${meeting.duration ? meeting.duration + ' min' : ''}`
+                : meeting.reason || 'No Answer',
+            date: meetingDate,
+            dotClass: meeting.connected ? 'meeting' : 'task-pending',
+            subtype: meeting.connected ? 'CONNECTED' : (meeting.reason || 'NO ANSWER').toUpperCase(),
+            subtypeColor: meeting.connected ? '#127c87' : '#f59e0b',
+            deletable: true
+        });
+    } else {
         const isUpcoming = meetingDate > now && !meeting.isPastMeeting;
-        
-activities.push({
-    type: 'meeting',
-    id: meeting.id,
-    icon: getCalendarSVG(14),
-    title: meeting.title,
+        activities.push({
+            type: 'meeting',
+            id: meeting.id,
+            icon: getCalendarSVG(14),
+            title: meeting.title,
             date: meetingDate,
             dotClass: isUpcoming ? 'meeting-upcoming' : 'meeting',
             subtype: isUpcoming ? 'Upcoming' : 'Meeting',
+            subtypeColor: isUpcoming ? '#f59e0b' : '#3b82f6',
             deletable: true
         });
-    });
+    }
+});
+
     
     // Add tasks
     const customerTasks = state.tasks.filter(t => t.customerId === customerId);
@@ -12679,20 +12909,24 @@ activities.push({
                 </div>
             ` : '';
             
-            html += `
-                <div class="timeline-item" style="position: relative;">
-                    <div class="timeline-dot ${activity.dotClass}"></div>
-                    <div class="timeline-item-header">
-                        <span class="timeline-item-icon">${activity.icon}</span>
-                        <span class="timeline-item-title">${escapeHtml(activity.title)}</span>
-                    </div>
-                    <div class="timeline-item-meta">
-                        <span>${timeStr}</span>
-                        ${activity.subtype ? `<span class="timeline-item-type">${activity.subtype}</span>` : ''}
-                    </div>
-                    ${deleteBtn}
-                </div>
-            `;
+            const subtypeColor = activity.subtypeColor || '';
+const dateStr = activity.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+html += `
+    <div class="timeline-item" style="position: relative;">
+        <div class="timeline-dot ${activity.dotClass}"></div>
+        <div class="timeline-item-header">
+            <span class="timeline-item-icon">${activity.icon}</span>
+            <span class="timeline-item-title">${escapeHtml(activity.title)}</span>
+        </div>
+        <div class="timeline-item-meta">
+            <span>${dateStr} · ${timeStr}</span>
+            ${activity.subtype ? `<span class="timeline-item-type" style="${subtypeColor ? 'color:' + subtypeColor + ';' : ''}">${activity.subtype}</span>` : ''}
+        </div>
+        ${deleteBtn}
+    </div>
+`;
+
         });
     });
     
@@ -16057,6 +16291,455 @@ function undoAiImprovement(editorId, originalHTML) {
 // ========== AI ASSISTANT FUNCTIONS - END ==========
 
 
+// ========== PHONE CALL FUNCTIONS - START ==========
+
+let callContacts = [];
+let callActions = [];
+let callSelectedCustomerId = null;
+
+function openPhoneCallModal(customerId = null) {
+    callContacts = [];
+    callActions = [];
+    callSelectedCustomerId = customerId;
+
+    // Reset form
+    document.getElementById('phoneCallForm').reset();
+    document.getElementById('callId').value = '';
+    document.getElementById('callMode').value = 'connected';
+
+    // Set default date to now
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('callDate').value = now.toISOString().slice(0, 16);
+
+    // Set customer if provided
+    if (customerId) {
+        const customer = state.customers.find(c => c.id === customerId);
+        if (customer) {
+            document.getElementById('callCustomerInput').value = customer.name;
+            loadCallQuickAddContacts(customerId);
+        }
+    } else {
+        document.getElementById('callCustomerInput').value = '';
+        document.getElementById('callQuickAddContacts').style.display = 'none';
+    }
+
+    // Reset to connected mode
+    setCallMode('connected');
+
+    // Render empty lists
+    renderCallContactsList();
+    renderCallActionsList();
+
+    // Setup customer combobox
+    setupCallCustomerCombobox();
+
+    document.getElementById('phoneCallModal').classList.add('active');
+}
+
+function closePhoneCallModal() {
+    document.getElementById('phoneCallModal').classList.remove('active');
+    callContacts = [];
+    callActions = [];
+    callSelectedCustomerId = null;
+}
+
+function setCallMode(mode) {
+    document.getElementById('callMode').value = mode;
+    const isConnected = mode === 'connected';
+
+    // Update toggle button styles directly
+    const connectedBtn = document.getElementById('callToggleConnected');
+    const notConnectedBtn = document.getElementById('callToggleNotConnected');
+
+    if (isConnected) {
+        connectedBtn.style.background = 'linear-gradient(135deg, #023747 0%, #1ba8af 100%)';
+        connectedBtn.style.color = 'white';
+        connectedBtn.style.boxShadow = '0 2px 6px rgba(27,168,175,0.3)';
+        notConnectedBtn.style.background = 'transparent';
+        notConnectedBtn.style.color = '#9ca3af';
+        notConnectedBtn.style.boxShadow = 'none';
+    } else {
+        notConnectedBtn.style.background = 'linear-gradient(135deg, #023747 0%, #1ba8af 100%)';
+        notConnectedBtn.style.color = 'white';
+        notConnectedBtn.style.boxShadow = '0 2px 6px rgba(27,168,175,0.3)';
+        connectedBtn.style.background = 'transparent';
+        connectedBtn.style.color = '#9ca3af';
+        connectedBtn.style.boxShadow = 'none';
+    }
+
+    // Show/hide fields
+    document.getElementById('callNotConnectedBanner').style.display = isConnected ? 'none' : 'block';
+    document.getElementById('callDurationGroup').style.display = isConnected ? 'block' : 'none';
+    document.getElementById('callReasonGroup').style.display = isConnected ? 'none' : 'block';
+    document.getElementById('callNotesGroup').style.display = isConnected ? 'block' : 'none';
+    document.getElementById('callActionsGroup').style.display = isConnected ? 'block' : 'none';
+
+    // Update label
+    document.getElementById('callContactLabel').textContent = isConnected ? 'Spoke With' : 'Tried to Reach';
+}
+
+function setupCallCustomerCombobox() {
+    const input = document.getElementById('callCustomerInput');
+    const dropdown = document.getElementById('callCustomerDropdown');
+
+    // Clone to remove old listeners
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+
+    newInput.addEventListener('focus', () => {
+        updateCallCustomerDropdown(newInput.value);
+        dropdown.classList.add('active');
+    });
+    newInput.addEventListener('input', () => {
+        updateCallCustomerDropdown(newInput.value);
+        dropdown.classList.add('active');
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#callCustomerInput') && !e.target.closest('#callCustomerDropdown')) {
+            dropdown.classList.remove('active');
+        }
+    });
+}
+
+function updateCallCustomerDropdown(searchTerm = '') {
+    const dropdown = document.getElementById('callCustomerDropdown');
+    const filtered = state.customers.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    let html = '';
+    if (searchTerm && !filtered.some(c => c.name.toLowerCase() === searchTerm.toLowerCase())) {
+        html += `<div class="customer-dropdown-item new-customer" onclick="selectCallCustomer(null, '${escapeHtml(searchTerm)}')">➕ Add "${escapeHtml(searchTerm)}"</div>`;
+    }
+    filtered.forEach(c => {
+        html += `<div class="customer-dropdown-item" onclick="selectCallCustomer('${c.id}', '${escapeHtml(c.name)}')">
+            <div class="customer-dropdown-item-name">${escapeHtml(c.name)}</div>
+        </div>`;
+    });
+    if (!html) html = '<div class="customer-dropdown-item" style="color:var(--text-secondary);text-align:center;font-size:0.75rem;">No customers</div>';
+    dropdown.innerHTML = html;
+}
+
+function selectCallCustomer(customerId, customerName) {
+    document.getElementById('callCustomerInput').value = customerName;
+    callSelectedCustomerId = customerId;
+    document.getElementById('callCustomerDropdown').classList.remove('active');
+    if (customerId) loadCallQuickAddContacts(customerId);
+}
+
+function loadCallQuickAddContacts(customerId) {
+    const container = document.getElementById('callQuickAddContacts');
+    const list = document.getElementById('callQuickAddList');
+    const customer = state.customers.find(c => c.id === customerId);
+    if (!customer) { container.style.display = 'none'; return; }
+
+    const contactsMap = new Map();
+    if (customer.participants) {
+        customer.participants.forEach(p => {
+            const key = p.email ? p.email.toLowerCase() : p.name.toLowerCase();
+            contactsMap.set(key, p);
+        });
+    }
+    state.meetings.filter(m => m.customerId === customerId).forEach(meeting => {
+        (meeting.participants || []).forEach(p => {
+            const key = p.email ? p.email.toLowerCase() : p.name.toLowerCase();
+            if (!contactsMap.has(key)) contactsMap.set(key, p);
+        });
+    });
+
+    const contacts = Array.from(contactsMap.values()).filter(p => {
+        const key = p.email ? p.email.toLowerCase() : p.name.toLowerCase();
+        return !callContacts.some(c => {
+            const ck = c.email ? c.email.toLowerCase() : c.name.toLowerCase();
+            return ck === key;
+        });
+    });
+
+    if (contacts.length === 0) { container.style.display = 'none'; return; }
+
+    list.innerHTML = contacts.map(p => {
+        const initials = p.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const details = [p.role, p.email].filter(Boolean).join(' · ');
+        const pJson = JSON.stringify(p).replace(/"/g, '&quot;');
+        return `
+            <div class="quick-add-contact-item" onclick='quickAddCallContact(${pJson})'>
+                <div class="quick-add-contact-avatar">${initials}</div>
+                <div class="quick-add-contact-info">
+                    <div class="quick-add-contact-name">${escapeHtml(p.name)}</div>
+                    ${details ? `<div class="quick-add-contact-details">${escapeHtml(details)}</div>` : ''}
+                </div>
+                <div class="quick-add-contact-icon">➕</div>
+            </div>`;
+    }).join('');
+
+    container.style.display = 'block';
+}
+
+function quickAddCallContact(contactData) {
+    const key = contactData.email ? contactData.email.toLowerCase() : contactData.name.toLowerCase();
+    if (callContacts.some(c => (c.email ? c.email.toLowerCase() : c.name.toLowerCase()) === key)) {
+        showToast('⚠ Already added', 'error'); return;
+    }
+    callContacts.push(contactData);
+    renderCallContactsList();
+    if (callSelectedCustomerId) loadCallQuickAddContacts(callSelectedCustomerId);
+}
+
+function addCallContact() {
+    const input = document.getElementById('callContactInput');
+    const name = input.value.trim();
+    if (!name) { showToast('⚠ Enter a name', 'error'); return; }
+    const key = name.toLowerCase();
+    if (callContacts.some(c => c.name.toLowerCase() === key)) {
+        showToast('⚠ Already added', 'error'); return;
+    }
+    callContacts.push({ name });
+    input.value = '';
+    renderCallContactsList();
+    if (callSelectedCustomerId) loadCallQuickAddContacts(callSelectedCustomerId);
+}
+
+function removeCallContact(index) {
+    callContacts.splice(index, 1);
+    renderCallContactsList();
+    if (callSelectedCustomerId) loadCallQuickAddContacts(callSelectedCustomerId);
+}
+
+function renderCallContactsList() {
+    const container = document.getElementById('callContactsList');
+    if (callContacts.length === 0) {
+        container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-tertiary);">No contacts added yet</span>';
+        return;
+    }
+    container.innerHTML = callContacts.map((c, i) => `
+        <div style="display:inline-flex; align-items:center; gap:0.35rem; background:#f0fdf4;
+                    border:1px solid #10b981; border-radius:8px; padding:0.2rem 0.5rem;
+                    font-size:0.8rem; color:#065f46;">
+            ✓ ${escapeHtml(c.name)}
+            <span onclick="removeCallContact(${i})" style="cursor:pointer; opacity:0.6; margin-left:0.2rem;">×</span>
+        </div>`).join('');
+}
+
+function addCallAction() {
+    const input = document.getElementById('callActionInput');
+    const text = input.value.trim();
+    if (!text) { showToast('⚠ Enter an action item', 'error'); return; }
+    callActions.push(text);
+    input.value = '';
+    renderCallActionsList();
+}
+
+function removeCallAction(index) {
+    callActions.splice(index, 1);
+    renderCallActionsList();
+}
+
+function renderCallActionsList() {
+    const container = document.getElementById('callActionsList');
+    if (callActions.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = callActions.map((a, i) => `
+        <div style="display:flex; align-items:center; justify-content:space-between;
+                    background:#f3f4f6; border-radius:4px; padding:0.35rem 0.5rem;
+                    font-size:0.85rem; margin-bottom:0.25rem;">
+            <span>☑ ${escapeHtml(a)}</span>
+            <span onclick="removeCallAction(${i})" style="cursor:pointer; color:var(--text-secondary);">×</span>
+        </div>`).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('phoneCallForm');
+    if (form) {
+        form.addEventListener('submit', handlePhoneCallSubmit);
+    }
+
+    // Enter key on action input
+    const actionInput = document.getElementById('callActionInput');
+    if (actionInput) {
+        actionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addCallAction(); }
+        });
+    }
+
+    // Enter key on contact input
+    const contactInput = document.getElementById('callContactInput');
+    if (contactInput) {
+        contactInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addCallContact(); }
+        });
+    }
+});
+
+function handlePhoneCallSubmit(e) {
+    e.preventDefault();
+
+    const mode = document.getElementById('callMode').value;
+    const isConnected = mode === 'connected';
+    const customerInput = document.getElementById('callCustomerInput').value.trim();
+    const callDate = document.getElementById('callDate').value;
+
+    if (!customerInput) { showToast('⚠ Enter a customer', 'error'); return; }
+    if (!callDate) { showToast('⚠ Enter a date and time', 'error'); return; }
+
+    // Resolve customer
+    let customerId = callSelectedCustomerId;
+    let customerName = customerInput;
+
+    if (!customerId) {
+        const existing = state.customers.find(c =>
+            c.name.toLowerCase() === customerInput.toLowerCase()
+        );
+        if (existing) {
+            customerId = existing.id;
+            customerName = existing.name;
+        } else {
+            const newCustomer = {
+                id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                name: customerInput,
+                createdAt: new Date().toISOString()
+            };
+            state.customers.push(newCustomer);
+            customerId = newCustomer.id;
+            customerName = newCustomer.name;
+        }
+    }
+
+// Sync contacts to customer
+if (customerId && callContacts.length > 0) {
+    const customer = state.customers.find(c => c.id === customerId);
+    if (customer) {
+        if (!customer.participants) customer.participants = [];
+        callContacts.forEach(contact => {
+            const key = contact.email ? contact.email.toLowerCase() : contact.name.toLowerCase();
+            const exists = customer.participants.some(p =>
+                (p.email ? p.email.toLowerCase() : p.name.toLowerCase()) === key
+            );
+            if (!exists) {
+                customer.participants.push({
+                    name: contact.name,
+                    role: contact.role || '',
+                    email: contact.email || '',
+                    phone: contact.phone || ''
+                });
+            }
+        });
+
+        // Also refresh the participants section if visible
+        if (state.currentCustomer === customerId) {
+            showCustomerParticipantsSection(customerId);
+        }
+    }
+}
+
+
+// Build title from contacts
+const contactNames = callContacts.length > 0
+    ? callContacts.map(p => p.name).join(', ')
+    : '';
+
+const callTitle = isConnected
+    ? `Call${contactNames ? ' · ' + contactNames : ''}`
+    : `Call${contactNames ? ' · ' + contactNames : ''} — ${document.getElementById('callReason').value}`;
+
+const callRecord = {
+    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type: 'phone-call',
+    title: callTitle,
+    customerId,
+    customerName,
+    date: callDate,
+    duration: isConnected ? (parseInt(document.getElementById('callDuration').value) || null) : null,
+    connected: isConnected,
+    reason: isConnected ? null : document.getElementById('callReason').value,
+    participants: [...callContacts],
+    notes: isConnected ? document.getElementById('callNotes').value.trim() : '',
+    notesHTML: isConnected ? document.getElementById('callNotes').value.trim() : '',
+    isPastMeeting: true,
+    tabId: 'individual',
+    createdAt: new Date().toISOString()
+};
+
+
+    // Create tasks from action items
+    callActions.forEach(actionTitle => {
+        state.tasks.unshift({
+            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            title: actionTitle,
+            description: `From call: ${customerName} on ${new Date(callDate).toLocaleDateString()}`,
+            priority: 'medium',
+            status: 'todo',
+            dueDate: '',
+            tags: ['call'],
+            color: 'none',
+            subtasks: [],
+            completed: false,
+            archived: false,
+            customerId,
+            customerName,
+            meetingId: callRecord.id,
+            createdAt: new Date().toISOString()
+        });
+    });
+
+    const existingId = document.getElementById('callId').value;
+if (existingId) {
+    // Editing existing call
+    const index = state.meetings.findIndex(m => m.id === existingId);
+    if (index !== -1) {
+        callRecord.id = existingId;
+        callRecord.createdAt = state.meetings[index].createdAt;
+        state.meetings[index] = callRecord;
+
+        // Update existing tasks linked to this call
+        state.tasks = state.tasks.filter(t => t.meetingId !== existingId);
+        callActions.forEach(actionTitle => {
+            state.tasks.unshift({
+                id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                title: actionTitle,
+                description: `From call: ${customerName} on ${new Date(callDate).toLocaleDateString()}`,
+                priority: 'medium',
+                status: 'todo',
+                dueDate: '',
+                tags: ['call'],
+                color: 'none',
+                subtasks: [],
+                completed: false,
+                archived: false,
+                customerId,
+                customerName,
+                meetingId: existingId,
+                createdAt: new Date().toISOString()
+            });
+        });
+    }
+    showToast('✅ Call updated!', 'success');
+} else {
+    // New call
+    state.meetings.unshift(callRecord);
+    showToast(isConnected ? '✅ Call logged!' : '✅ Missed call logged!', 'success');
+}
+
+    saveData();
+    renderCustomerFilters();
+    updateStats();
+    closePhoneCallModal();
+
+    // Refresh visible sections
+    if (state.currentCustomer === customerId) {
+        showCustomerMeetingsSection(customerId);
+        renderTimeline();
+        renderTasks();
+    }
+    if (document.getElementById('customerActivitySection').classList.contains('active')) {
+        renderCustomerActivity();
+    }
+
+
+}
+
+// ========== PHONE CALL FUNCTIONS - END ==========
+
+
         init();
         window.addEventListener('beforeunload', saveData);
     </script>
@@ -16200,17 +16883,4 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
 
