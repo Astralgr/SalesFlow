@@ -6947,25 +6947,95 @@ function showCancellationSuccess(cancelAt) {
 
 async function reactivateSubscription() {
     const subscriptionId = state.subscription.stripeSubscriptionId;
+    const cancelAt = state.subscription.cancelAt;
+    const now = new Date();
 
-    if (!subscriptionId) {
-        showToast('⚠️ No subscription to reactivate', 'error');
+    // ✅ Check if subscription period has already ended
+    if (cancelAt && new Date(cancelAt) <= now) {
+        // Subscription is deleted on Stripe — need new checkout
+        showConfirm(
+            '⚠️',
+            'Subscription Expired',
+            'Your subscription has already ended. You will need to re-subscribe with your payment details.',
+            async () => {
+                closeUpgradeModal();
+                // ✅ Reset local state first
+                state.subscription = {
+                    plan: 'free',
+                    status: 'active',
+                    cancelAt: null,
+                    stripeCustomerId: null,
+                    stripeSubscriptionId: null,
+                    periodEnd: null
+                };
+                await saveSubscription();
+                await saveUserDataToFirestore();
+                renderCustomerSlots();
+                renderCustomerFilters();
+                // ✅ Send to new checkout
+                openUpgradeModal();
+            }
+        );
         return;
     }
 
-    showToast('🔄 Reactivating...', 'success');
+    // ✅ Check if we have what we need
+    if (!subscriptionId) {
+        showToast('⚠️ No active subscription found', 'error');
+        return;
+    }
+
+    if (!auth.currentUser) {
+        showToast('⚠️ Please sign in first', 'error');
+        openAuthModal();
+        return;
+    }
+
+    showToast('🔄 Reactivating your plan...', 'success');
 
     try {
         const response = await fetch(
-            'https://web-production-fcbb6.up.railway.app/reactivate-subscription', 
+            'https://web-production-fcbb6.up.railway.app/reactivate-subscription',
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    stripeSubscriptionId: subscriptionId
+                    stripeSubscriptionId: subscriptionId,
+                    userId: auth.currentUser.uid
                 }),
             }
         );
+
+        // ✅ Check HTTP status before parsing
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            
+            // ✅ Handle subscription not found on Stripe
+            if (response.status === 404 || 
+                errorData.error?.includes('No such subscription')) {
+                showToast(
+                    '⚠️ Subscription not found. Please re-subscribe.', 
+                    'error'
+                );
+                // Reset to free and open upgrade modal
+                state.subscription = {
+                    plan: 'free',
+                    status: 'active',
+                    cancelAt: null,
+                    stripeCustomerId: null,
+                    stripeSubscriptionId: null
+                };
+                await saveSubscription();
+                await saveUserDataToFirestore();
+                renderCustomerSlots();
+                renderCustomerFilters();
+                updatePlanCards();
+                openUpgradeModal();
+                return;
+            }
+            
+            throw new Error(errorData.error || 'Reactivation failed');
+        }
 
         const data = await response.json();
 
@@ -6974,9 +7044,20 @@ async function reactivateSubscription() {
             return;
         }
 
-        // ✅ Update all subscription state
+        // ✅ Verify Stripe confirmed the reactivation
+        if (!data.success && !data.subscription) {
+            showToast('❌ Reactivation not confirmed by Stripe', 'error');
+            return;
+        }
+
+        // ✅ Update state ONLY after Stripe confirms
         state.subscription.status = 'active';
         state.subscription.cancelAt = null;
+        
+        // ✅ Update periodEnd if Stripe returns it
+        if (data.periodEnd) {
+            state.subscription.periodEnd = data.periodEnd;
+        }
 
         // ✅ Save to both localStorage and Firestore
         await saveSubscription();
@@ -6986,16 +7067,14 @@ async function reactivateSubscription() {
         renderCustomerSlots();
         renderCustomerFilters();
         updatePlanCards();
-        
+
         if (state.currentCustomer !== 'all') {
             updateFrozenBanner();
         }
-        
-        // ✅ Remove reactivate button from sidebar
+
         const reactivateBtn = document.getElementById('reactivatePlanBtn');
         if (reactivateBtn) reactivateBtn.remove();
 
-        // ✅ Refresh any visible sections
         if (document.getElementById('upcomingMeetingsSection')
             .classList.contains('active')) {
             renderUpcomingMeetings();
@@ -7007,14 +7086,61 @@ async function reactivateSubscription() {
 
         const planName = state.subscription.plan.charAt(0).toUpperCase() + 
                         state.subscription.plan.slice(1);
-        showToast(
-            `✅ ${planName} plan reactivated! You're all set 🎉`, 
-            'success'
-        );
+
+        // ✅ Show success with next billing date
+        const nextBillingDate = state.subscription.periodEnd 
+            ? new Date(state.subscription.periodEnd * 1000)
+                .toLocaleDateString('en-US', { 
+                    month: 'long', day: 'numeric', year: 'numeric' 
+                })
+            : null;
+
+        document.getElementById('confirmIcon').textContent = '✅';
+        document.getElementById('confirmTitle').textContent = 'Plan Reactivated!';
+        document.getElementById('confirmMessage').innerHTML = `
+            <div style="text-align: center;">
+                <p style="margin-bottom: 0.75rem;">
+                    Your <strong>${planName}</strong> plan is back on!
+                </p>
+                ${nextBillingDate ? `
+                    <p style="margin-bottom: 0.75rem; 
+                               font-size: 0.85rem; 
+                               color: var(--text-secondary);">
+                        Next billing date:<br>
+                        <strong style="color: var(--primary);">
+                            ${nextBillingDate}
+                        </strong>
+                    </p>
+                ` : ''}
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    No new payment needed — your existing 
+                    payment method will be used.
+                </p>
+            </div>
+        `;
+
+        const cancelBtn = document.getElementById('cancelConfirmBtn');
+        cancelBtn.style.display = 'none';
+
+        const confirmBtn = document.getElementById('confirmBtn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.textContent = 'Great!';
+        newConfirmBtn.className = 'btn btn-primary';
+        newConfirmBtn.addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.remove('active');
+            document.getElementById('cancelConfirmBtn').style.display = '';
+            document.getElementById('cancelConfirmBtn').textContent = 'Cancel';
+            document.getElementById('cancelConfirmBtn').className = 
+                'btn btn-secondary';
+        });
+
+        document.getElementById('confirmModal').classList.add('active');
 
     } catch (err) {
         console.error('Reactivate error:', err);
-        showToast('❌ Failed to reactivate. Please try again.', 'error');
+        showToast('❌ Failed to reactivate: ' + err.message, 'error');
     }
 }
 
@@ -15933,6 +16059,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
