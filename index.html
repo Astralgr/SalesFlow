@@ -10703,21 +10703,16 @@ document.getElementById('customerId').value = '';
             state.editingCustomer = null;
         }
 
-     function handleCustomerSubmit(e) {
+       function handleCustomerSubmit(e) {
     e.preventDefault();
 
-    const existingId = document.getElementById('customerId').value;
-    
-    // Check actual data, not state.editingCustomer which can be null
-    const existingCustomer = existingId 
-        ? state.customers.find(c => c.id === existingId) 
-        : null;
-    const isEditing = !!existingCustomer;
 
-    if (!isEditing && !canAddCustomer()) { 
-        showLimitReachedModal(); 
-        return; 
-    }
+    
+const existingId = document.getElementById('customerId').value;
+const existingCustomer = existingId 
+    ? state.customers.find(c => c.id === existingId) 
+    : null;
+const isEditing = !!existingCustomer;
     
     const customer = {
         id: existingId || Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
@@ -10734,42 +10729,43 @@ document.getElementById('customerId').value = '';
         size: document.getElementById('customerSize').value,
         linkedIn: document.getElementById('customerLinkedIn').value.trim(),
         mapsLink: document.getElementById('customerMapsLink').value.trim(),
-        // Preserve original fields that are not in the edit form
-        createdAt: existingCustomer?.createdAt || new Date().toISOString(),
-        pinned: existingCustomer?.pinned || false,
-        participants: existingCustomer?.participants || []
+        createdAt: state.editingCustomer?.createdAt || new Date().toISOString()
     };
     
-    if (isEditing) {
-        const index = state.customers.findIndex(c => c.id === existingId);
-        if (index !== -1) {
-            const oldName = state.customers[index].name;
-            state.customers[index] = customer;
-            
-            // Sync name change across all related records
-            if (oldName !== customer.name) {
-                state.tasks.forEach(t => { 
-                    if (t.customerId === customer.id) t.customerName = customer.name; 
-                });
-                state.meetings.forEach(m => { 
-                    if (m.customerId === customer.id) m.customerName = customer.name; 
-                });
-                state.CustomerInfos.forEach(p => { 
-                    if (p.customerId === customer.id) p.customerName = customer.name; 
-                });
-            }
+if (isEditing) {
+    const index = state.customers.findIndex(c => c.id === existingId);
+    if (index !== -1) {
+        const oldName = state.customers[index].name;
+        // Preserve fields not in the edit form
+        customer.pinned = state.customers[index].pinned;
+        customer.participants = state.customers[index].participants;
+        customer.createdAt = state.customers[index].createdAt; // preserve original
+        state.customers[index] = customer;
+
+        if (oldName !== customer.name) {
+            state.tasks.forEach(t => {
+                if (t.customerId === customer.id) t.customerName = customer.name;
+            });
+            state.meetings.forEach(m => {
+                if (m.customerId === customer.id) m.customerName = customer.name;
+            });
+            state.CustomerInfos.forEach(p => {
+                if (p.customerId === customer.id) p.customerName = customer.name;
+            });
         }
-        showToast('✅ Customer updated!', 'success');
-    } else {
-        state.customers.push(customer);
-        showToast('✅ Customer added!', 'success');
     }
+    showToast('✅ Customer updated!', 'success');
+} else {
+    state.customers.push(customer);
+    showToast('✅ Customer added!', 'success');
+}
+
     
     saveData();
     renderCustomerList();
     renderCustomerFilters();
     
-    // Update banner if currently viewing this customer
+    // Update banner if viewing this customer
     if (state.currentCustomer === customer.id) {
         updateCustomerBanner(customer.id);
     }
@@ -10779,12 +10775,12 @@ document.getElementById('customerId').value = '';
     // Navigate to new customer after creation (not when editing)
     if (!isEditing) {
         closeCustomersModal();
+        // Small delay to ensure UI updates
         setTimeout(() => {
             selectCustomerFromOverview(customer.id);
         }, 100);
     }
 }
-
 
 
 
@@ -16217,17 +16213,5 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
 
 
