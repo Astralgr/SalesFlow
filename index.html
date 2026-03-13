@@ -7259,7 +7259,6 @@ function checkSubscriptionExpiry() {
         const now = new Date();
         
         if (now >= cancelDate) {
-            // ✅ Full downgrade
             state.subscription.plan = 'free';
             state.subscription.status = 'active';
             state.subscription.stripeCustomerId = null;
@@ -7269,27 +7268,116 @@ function checkSubscriptionExpiry() {
             
             saveSubscription();
             saveUserDataToFirestore();
-            
-            // ✅ Full UI refresh
             renderCustomerSlots();
             renderCustomerFilters();
             updatePlanCards();
-            
+
             if (state.currentCustomer !== 'all') {
                 updateFrozenBanner();
             }
 
-            // ✅ Remove reactivate button
             const reactivateBtn = document.getElementById('reactivatePlanBtn');
             if (reactivateBtn) reactivateBtn.remove();
-            
-            showToast(
-                'Your subscription has ended. You are now on the Free plan.', 
-                'success'
-            );
+
+            // ✅ Count frozen customers
+            const frozenCount = state.customers.filter(c => 
+                isCustomerFrozen(c.id)
+            ).length;
+
+            if (frozenCount > 0) {
+                showFrozenCustomersWarning(frozenCount);
+            } else {
+                showToast(
+                    'Your subscription has ended. You are now on the Free plan.', 
+                    'success'
+                );
+            }
         }
     }
 }
+
+// ✅ NEW function — shows persistent warning
+function showFrozenCustomersWarning(frozenCount) {
+    // Remove existing warning if any
+    const existing = document.getElementById('frozenWarningBanner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'frozenWarningBanner';
+    banner.style.cssText = `
+        background: linear-gradient(135deg, 
+            rgba(245, 158, 11, 0.15), 
+            rgba(245, 158, 11, 0.05));
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        border-left: 4px solid #f59e0b;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    banner.innerHTML = `
+        <div style="flex: 1;">
+            <div style="
+                font-weight: 700; 
+                color: #f59e0b; 
+                margin-bottom: 0.35rem;
+                font-size: 0.9rem;
+            ">
+                🔒 ${frozenCount} Customer${frozenCount !== 1 ? 's' : ''} 
+                Now View-Only
+            </div>
+            <div style="
+                font-size: 0.8rem; 
+                color: var(--text-secondary);
+                line-height: 1.5;
+            ">
+                Your plan ended. Your first 6 customers remain fully editable. 
+                <strong>${frozenCount}</strong> customer${frozenCount !== 1 ? 's are' : ' is'} 
+                now view-only — all data is safe and nothing was deleted.
+                Upgrade to regain full access.
+            </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+            <button onclick="openUpgradeModal()" style="
+                background: linear-gradient(135deg, #023747 0%, #1ba8af 100%);
+                color: white;
+                border: none;
+                padding: 0.5rem 1rem;
+                border-radius: 8px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+                white-space: nowrap;
+            " onmouseover="this.style.opacity='0.9'"
+               onmouseout="this.style.opacity='1'">
+                ⬆️ Upgrade
+            </button>
+            <button onclick="document.getElementById('frozenWarningBanner').remove()" 
+                    style="
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--text-secondary);
+                padding: 0.5rem;
+                border-radius: 8px;
+                font-size: 0.8rem;
+                cursor: pointer;
+            ">✕</button>
+        </div>
+    `;
+
+    // ✅ Insert at top of main content
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.insertBefore(banner, mainContent.firstChild);
+    }
+}
+
 
         
 function init() {
@@ -8349,8 +8437,29 @@ function renderAllCustomersList() {
                 : escapeHtml(addressText))
             : '—';
         
-        return `
-            <div class="customer-row ${customer.pinned ? 'pinned' : ''}" onclick="selectCustomerFromOverview('${customer.id}')">
+const frozen = isCustomerFrozen(customer.id);
+return `
+    <div class="customer-row 
+                ${customer.pinned ? 'pinned' : ''} 
+                ${frozen ? 'frozen-customer' : ''}" 
+         onclick="selectCustomerFromOverview('${customer.id}')"
+         title="${frozen ? '🔒 Upgrade to edit this customer' : ''}">
+        ${frozen ? `
+            <div style="
+                position: absolute;
+                right: 0.5rem;
+                top: 50%;
+                transform: translateY(-50%);
+                background: rgba(107,114,128,0.15);
+                color: var(--text-secondary);
+                font-size: 0.6rem;
+                font-weight: 700;
+                padding: 0.15rem 0.4rem;
+                border-radius: 4px;
+                letter-spacing: 0.05em;
+            ">🔒 VIEW ONLY</div>
+        ` : ''}
+
                 <div>${logoHtml}</div>
                 <div class="customer-name-cell">
                     <span class="pin-star ${customer.pinned ? 'pinned' : ''}" onclick="event.stopPropagation(); togglePinCustomer('${customer.id}', event)">${customer.pinned ? '★' : '☆'}</span>
@@ -11982,20 +12091,25 @@ if (meeting.participants && meeting.participants.length > 0) {
         // DEBUG: Log current customer state
         console.log('Opening task modal - state.currentCustomer:', state.currentCustomer);
         
-        // ONLY auto-fill customer if viewing a SPECIFIC customer (not dashboard)
-        if (state.currentCustomer && state.currentCustomer !== 'all') {
-            const currentCustomerId = state.currentCustomer; // Capture the value
-            const customer = state.customers.find(c => c.id === currentCustomerId);
-            
-            console.log('Looking for customer with ID:', currentCustomerId);
-            console.log('Found customer:', customer);
-            
-            if (customer) {
-                document.getElementById('taskCustomerInput').value = customer.name;
-                state.selectedTaskCustomerId = customer.id;
-                console.log('Auto-filled customer:', customer.name);
-            }
-        }
+       // ONLY auto-fill customer if viewing a SPECIFIC customer (not dashboard)
+if (state.currentCustomer && state.currentCustomer !== 'all') {
+    
+    // ✅ Block task creation for frozen customers
+    if (isCustomerFrozen(state.currentCustomer)) {
+        showToast('🔒 Upgrade to add tasks to this customer', 'error');
+        openUpgradeModal();
+        return;
+    }
+
+    const currentCustomerId = state.currentCustomer;
+    const customer = state.customers.find(c => c.id === currentCustomerId);
+
+    if (customer) {
+        document.getElementById('taskCustomerInput').value = customer.name;
+        state.selectedTaskCustomerId = customer.id;
+    }
+}
+
         // When on dashboard (state.currentCustomer === 'all'), customer field stays empty
     }
     
@@ -16059,6 +16173,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
