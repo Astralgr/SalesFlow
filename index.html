@@ -4955,13 +4955,19 @@ async function handleEmailAuth(e) {
 
 async function signOutUser() {
     try {
-        await auth.signOut();
+        // ✅ Close auth modal first
         closeAuthModal();
-        showToast('👋 Signed out!', 'success');
+        
+        // ✅ Sign out — onAuthStateChanged will handle state reset
+        await auth.signOut();
+        
+        showToast('👋 Signed out successfully!', 'success');
+        
     } catch (error) {
         showToast('❌ ' + error.message, 'error');
     }
 }
+
 
 function updateAuthUI(user) {
     const area = document.getElementById('userAuthArea');
@@ -5027,22 +5033,75 @@ auth.onAuthStateChanged(async (user) => {
             }
         }
         
-    } else {
-        loadData();
-        state.sharedMeetings = [];
-        state.myShares = [];
-    }
-
-    checkSubscriptionExpiry(); 
+} else {
+    // ✅ Reset ALL state to defaults on sign out
+    state.tasks = [];
+    state.notes = [];
+    state.customers = [];
+    state.meetings = [];
+    state.CustomerInfos = [];
+    state.sharedMeetings = [];
+    state.myShares = [];
+    state.meetingTabs = [
+        { id: 'all', name: 'All Meetings', icon: '', isDefault: true },
+        { id: 'individual', name: 'Individual', icon: '', isDefault: true }
+    ];
+    state.currentUser = null;
     state.currentCustomer = 'all';
     state.currentMeetingTab = 'all';
     
-    render();
-    renderCustomerFilters();
-    updateStats();
-    updateShareNotificationBadge();
+    // ✅ Reset subscription to free — never load from localStorage on sign out
+    state.subscription = { 
+        plan: 'free', 
+        status: 'active',
+        cancelAt: null,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        periodEnd: null
+    };
     
-    showDashboard();
+    // ✅ Clear localStorage subscription so it doesn't persist
+    localStorage.removeItem('cnotes_subscription');
+    
+    // ✅ Close any open forms or modals
+    closeInlineMeetingForm();
+    closeInlineCustomerInfoForm();
+    document.querySelectorAll('.modal.active').forEach(m => 
+        m.classList.remove('active')
+    );
+    
+    // ✅ Remove reactivate button if visible
+    const reactivateBtn = document.getElementById('reactivatePlanBtn');
+    if (reactivateBtn) reactivateBtn.remove();
+    
+    // ✅ Reset customer banner
+    document.getElementById('customerHeaderBanner')
+        .classList.remove('active');
+    document.getElementById('frozenBanner')
+        .style.display = 'none';
+    
+    // ✅ Clear sidebar active states
+    document.querySelectorAll('.category-filter')
+        .forEach(b => b.classList.remove('active'));
+}
+
+
+checkSubscriptionExpiry(); 
+state.currentCustomer = 'all';
+state.currentMeetingTab = 'all';
+
+// ✅ Full UI reset for both sign in and sign out
+render();
+renderCustomerFilters();
+renderCustomerSlots();
+updateStats();
+updateShareNotificationBadge();
+updatePlanCards();
+showDashboard();
+
+// ✅ Reset main section title
+document.getElementById('mainSectionTitle').textContent = 'Tasks';
+
 });
 
 
@@ -5277,15 +5336,25 @@ async function loadUserDataFromFirestore(uid) {
             ];
             state.sharedMeetings = data.sharedMeetings || [];
             state.myShares = data.myShares || [];
-             if (data.subscription) {
+
+            // ✅ CRITICAL FIX: Always sync subscription from Firestore
+            // Firestore is source of truth, not localStorage
+            if (data.subscription) {
                 state.subscription = data.subscription;
-                saveSubscription(); // Also save to localStorage as backup
+                // Keep localStorage in sync
+                localStorage.setItem('cnotes_subscription', 
+                    JSON.stringify(state.subscription));
             }
+            // ⚠️ If no subscription in Firestore, keep default free plan
+            // but DO NOT load from localStorage (could be stale)
         }
     } catch (error) {
         console.error('Error loading data:', error);
+        // ✅ Fall back to localStorage only on network error
+        loadSubscription();
     }
 }
+
 
 async function saveUserDataToFirestore() {
     const user = auth.currentUser;
@@ -6887,13 +6956,16 @@ async function reactivateSubscription() {
     showToast('🔄 Reactivating...', 'success');
 
     try {
-        const response = await fetch('https://web-production-fcbb6.up.railway.app/reactivate-subscription', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                stripeSubscriptionId: subscriptionId
-            }),
-        });
+        const response = await fetch(
+            'https://web-production-fcbb6.up.railway.app/reactivate-subscription', 
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    stripeSubscriptionId: subscriptionId
+                }),
+            }
+        );
 
         const data = await response.json();
 
@@ -6902,57 +6974,86 @@ async function reactivateSubscription() {
             return;
         }
 
-        // Remove cancellation
+        // ✅ Update all subscription state
         state.subscription.status = 'active';
         state.subscription.cancelAt = null;
 
-        saveSubscription();
-        saveUserDataToFirestore();
+        // ✅ Save to both localStorage and Firestore
+        await saveSubscription();
+        await saveUserDataToFirestore();
+
+        // ✅ Full UI refresh
         renderCustomerSlots();
         renderCustomerFilters();
+        updatePlanCards();
+        
+        if (state.currentCustomer !== 'all') {
+            updateFrozenBanner();
+        }
+        
+        // ✅ Remove reactivate button from sidebar
+        const reactivateBtn = document.getElementById('reactivatePlanBtn');
+        if (reactivateBtn) reactivateBtn.remove();
 
-        showToast('✅ Subscription reactivated! You\'re staying on ' + state.subscription.plan.charAt(0).toUpperCase() + state.subscription.plan.slice(1), 'success');
+        // ✅ Refresh any visible sections
+        if (document.getElementById('upcomingMeetingsSection')
+            .classList.contains('active')) {
+            renderUpcomingMeetings();
+        }
+        if (document.getElementById('allCustomersSection')
+            .classList.contains('active')) {
+            renderAllCustomersList();
+        }
+
+        const planName = state.subscription.plan.charAt(0).toUpperCase() + 
+                        state.subscription.plan.slice(1);
+        showToast(
+            `✅ ${planName} plan reactivated! You're all set 🎉`, 
+            'success'
+        );
 
     } catch (err) {
         console.error('Reactivate error:', err);
-        showToast('❌ Failed to reactivate', 'error');
+        showToast('❌ Failed to reactivate. Please try again.', 'error');
     }
 }
+
         
 
         
 async function selectPlan(plan) {
-    // ── Plan hierarchy (higher number = higher plan) ──
     const planRank = { free: 0, starter: 1, pro: 2, unlimited: 3 };
-
     const currentRank = planRank[state.subscription.plan] || 0;
     const selectedRank = planRank[plan] || 0;
 
-    // ── Block downgrade (including to free) ──
     if (selectedRank <= currentRank) {
         openManageSubscription();
         return;
     }
 
-    // ── Only upgrades reach here ──
-    const billing = currentBilling || 'monthly';
-    const userEmail = auth.currentUser?.email;
-    const userId = auth.currentUser?.uid;
-
-    if (!userEmail || !userId) {
-        showToast('Please sign in first', 'error');
-        openAuthModal();
+    // ✅ Block upgrade if not signed in
+    if (!auth.currentUser) {
+        closeUpgradeModal();
+        showToast('⚠️ Please sign in to upgrade', 'error');
+        setTimeout(() => openAuthModal(), 500);
         return;
     }
+
+    const billing = currentBilling || 'monthly';
+    const userEmail = auth.currentUser.email;
+    const userId = auth.currentUser.uid;
 
     showToast('Redirecting to checkout...', 'success');
 
     try {
-        const response = await fetch('https://web-production-fcbb6.up.railway.app/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan, billing, userId, userEmail }),
-        });
+        const response = await fetch(
+            'https://web-production-fcbb6.up.railway.app/create-checkout-session', 
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan, billing, userId, userEmail }),
+            }
+        );
 
         const data = await response.json();
 
@@ -6968,6 +7069,7 @@ async function selectPlan(plan) {
         showToast('Could not connect to payment server.', 'error');
     }
 }
+
 
 function setBilling(type) {
     currentBilling = type;
@@ -7026,13 +7128,12 @@ function loadSubscription() { const s = localStorage.getItem('cnotes_subscriptio
 // ========== MONETIZATION FUNCTIONS - END ==========
 
 function checkSubscriptionExpiry() {
-    // If subscription is set to cancel and the date has passed, downgrade
     if (state.subscription.cancelAt) {
         const cancelDate = new Date(state.subscription.cancelAt);
         const now = new Date();
         
         if (now >= cancelDate) {
-            // Period has ended — downgrade to free
+            // ✅ Full downgrade
             state.subscription.plan = 'free';
             state.subscription.status = 'active';
             state.subscription.stripeCustomerId = null;
@@ -7042,13 +7143,28 @@ function checkSubscriptionExpiry() {
             
             saveSubscription();
             saveUserDataToFirestore();
+            
+            // ✅ Full UI refresh
             renderCustomerSlots();
             renderCustomerFilters();
+            updatePlanCards();
             
-            showToast('Your subscription has ended. You are now on the Free plan.', 'success');
+            if (state.currentCustomer !== 'all') {
+                updateFrozenBanner();
+            }
+
+            // ✅ Remove reactivate button
+            const reactivateBtn = document.getElementById('reactivatePlanBtn');
+            if (reactivateBtn) reactivateBtn.remove();
+            
+            showToast(
+                'Your subscription has ended. You are now on the Free plan.', 
+                'success'
+            );
         }
     }
 }
+
         
 function init() {
  loadSubscription();
@@ -15817,6 +15933,7 @@ function undoAiImprovement(editorId, originalHTML) {
 
 
 </html>
+
 
 
 
